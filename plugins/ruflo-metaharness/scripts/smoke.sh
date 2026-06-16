@@ -191,6 +191,22 @@ grep -q "execCli(\[\s*'-y'\s*,\s*'metaharness@latest'" "$F" 2>/dev/null || \
 grep -q "cwd: opts" "$F" || miss="$miss no-cwd-passthrough"
 [[ -z "$miss" ]] && ok || bad "$miss"
 
+step "17z2. _similarity.mjs unit tests (iter 39 — library-grade testability)"
+F="$ROOT/scripts/test-similarity.mjs"
+miss=""
+[[ -x "$F" ]] || miss="$miss not-executable"
+node --check "$F" 2>/dev/null || miss="$miss syntax-error"
+# 8 phases enumerated (anti-shrink guard)
+for phase in 'Phase 1' 'Phase 2' 'Phase 3' 'Phase 4' 'Phase 5' 'Phase 6' 'Phase 7' 'Phase 8'; do
+  grep -q "$phase" "$F" || miss="$miss missing-${phase// /-}"
+done
+# Phase 8 regression anchor — exact spike numbers must be hard-coded
+grep -q "0.8296" "$F" || miss="$miss no-spike-overall-anchor"
+grep -q "0.9987" "$F" || miss="$miss no-spike-cosine-anchor"
+# Runtime: full unit-test pass (this is the actual gate)
+node "$F" >/dev/null 2>&1 || miss="$miss unit-tests-fail"
+[[ -z "$miss" ]] && ok || bad "$miss"
+
 step "17z. ADR-152 §3.1 deep integration — oia-audit fingerprint + audit-trend structuralDistance (iter 38)"
 miss=""
 # oia-audit captures score + genome AND surfaces a fingerprint{score,genome}
