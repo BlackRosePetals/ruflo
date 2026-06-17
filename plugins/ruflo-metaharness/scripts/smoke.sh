@@ -191,6 +191,19 @@ grep -q "execCli(\[\s*'-y'\s*,\s*'metaharness@latest'" "$F" 2>/dev/null || \
 grep -q "cwd: opts" "$F" || miss="$miss no-cwd-passthrough"
 [[ -z "$miss" ]] && ok || bad "$miss"
 
+step "17z21. drift-from-history parallelizes audit-list + oia-audit (iter 58)"
+miss=""
+F="$ROOT/scripts/drift-from-history.mjs"
+# Async helper introduced
+grep -q "function runScriptJsonAsync" "$F" 2>/dev/null || miss="$miss no-async-helper"
+grep -q "Promise.all" "$F" 2>/dev/null || miss="$miss no-promise-all"
+# Reuses auditResult from parallel batch (no second oia-audit call)
+COUNT=$(grep -c "runScriptJson\(Async\)\?('oia-audit.mjs'" "$F" 2>/dev/null; true)
+[[ "$COUNT" -le 1 ]] || miss="$miss duplicate-oia-audit-calls:$COUNT"
+# Comment marker
+grep -q "iter 58 — reuse auditResult from the parallel batch" "$F" 2>/dev/null || miss="$miss no-reuse-comment"
+[[ -z "$miss" ]] && ok || bad "$miss"
+
 step "17z20. iter-55 gaps B + C closed (iter 57)"
 miss=""
 # Gap B: _harness.mjs regex catches ENOTFOUND-class network errors
