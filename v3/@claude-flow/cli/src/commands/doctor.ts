@@ -1436,6 +1436,20 @@ export const doctorCommand: Command = {
       description: 'Verbose output',
       type: 'boolean',
       default: false
+    },
+    {
+      name: 'fix-handles',
+      // Windows-only mitigation for anthropics/claude-code#67888 — Claude Code's
+      // Bash tool spawns cmd.exe/bash.exe without cleaning up child conhost.exe
+      // handles, so a long session accumulates dozens (observed live: 26+
+      // orphaned conhost.exe after a ~4h session). Each holds a kernel object
+      // + ~1MB, and combined with memory pressure this measurably slows the
+      // machine. This flag kills orphan conhost.exe (safe — Windows respawns
+      // on demand). Deliberately does NOT touch cmd.exe/bash.exe — those can
+      // be the invoking shell, and killing them 255's the caller.
+      description: 'Windows only: kill orphaned conhost.exe processes leaked by Claude Code (mitigation for anthropics/claude-code#67888)',
+      type: 'boolean',
+      default: false
     }
   ],
   examples: [
@@ -1443,13 +1457,84 @@ export const doctorCommand: Command = {
     { command: 'claude-flow doctor --fix', description: 'Print suggested fix commands (does not auto-apply)' },
     { command: 'claude-flow doctor --install', description: 'Auto-install missing dependencies' },
     { command: 'claude-flow doctor -c version', description: 'Check for stale npx cache' },
-    { command: 'claude-flow doctor -c claude', description: 'Check Claude Code CLI only' }
+    { command: 'claude-flow doctor -c claude', description: 'Check Claude Code CLI only' },
+    { command: 'claude-flow doctor --fix-handles', description: 'Windows: kill leaked conhost.exe from Claude Code sessions' }
   ],
   action: async (ctx: CommandContext): Promise<CommandResult> => {
     const showFix = ctx.flags.fix as boolean;
     const autoInstall = ctx.flags.install as boolean;
     const component = ctx.flags.component as string;
     const verbose = ctx.flags.verbose as boolean;
+    // Parser camelCases kebab-case flag names — read via `fixHandles`, not `['fix-handles']`.
+    const fixHandles = ctx.flags.fixHandles as boolean;
+
+    // Early-return short-circuit: `--fix-handles` is a targeted mitigation, not
+    // part of the health-check flow. Runs, reports, exits.
+    if (fixHandles) {
+      output.writeln();
+      output.writeln(output.bold('RuFlo Doctor — fix-handles'));
+      output.writeln(output.dim('─'.repeat(50)));
+      output.writeln();
+
+      if (process.platform !== 'win32') {
+        output.printInfo('--fix-handles is a Windows-only mitigation. On this platform (' + process.platform + '), no action taken.');
+        return { success: true };
+      }
+
+      const { spawnSync } = await import('child_process');
+      // PowerShell one-liner: read before-count, kill conhost, read after-count, report delta.
+      const psScript = [
+        "$before = (Get-Process conhost -EA SilentlyContinue).Count",
+        "$mem_before = [math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB, 2)",
+        "$killed = 0",
+        "Get-Process conhost -EA SilentlyContinue | ForEach-Object {",
+        "  try { Stop-Process -Id $_.Id -Force -EA Stop; $killed++ } catch {}",
+        "}",
+        "Start-Sleep -Seconds 1",
+        "$after = (Get-Process conhost -EA SilentlyContinue).Count",
+        "$mem_after = [math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB, 2)",
+        "Write-Output ('BEFORE_COUNT=' + $before)",
+        "Write-Output ('KILLED=' + $killed)",
+        "Write-Output ('AFTER_COUNT=' + $after)",
+        "Write-Output ('MEM_BEFORE_GB=' + $mem_before)",
+        "Write-Output ('MEM_AFTER_GB=' + $mem_after)",
+      ].join('; ');
+
+      const res = spawnSync('powershell', ['-NoProfile', '-Command', psScript], {
+        encoding: 'utf-8', timeout: 30000, windowsHide: true,
+      });
+
+      if (res.status !== 0) {
+        output.printError('PowerShell exited with code ' + res.status);
+        if (res.stderr) output.writeln(output.dim(res.stderr));
+        return { success: false, exitCode: 1 };
+      }
+
+      const parse = (key: string): string => {
+        const line = (res.stdout || '').split('\n').find((l) => l.startsWith(key + '='));
+        return line ? line.slice(key.length + 1).trim() : '?';
+      };
+      const before = parse('BEFORE_COUNT');
+      const killed = parse('KILLED');
+      const after = parse('AFTER_COUNT');
+      const memBefore = parse('MEM_BEFORE_GB');
+      const memAfter = parse('MEM_AFTER_GB');
+
+      output.writeln('conhost.exe processes:');
+      output.writeln('  before:  ' + before);
+      output.writeln('  killed:  ' + output.success(killed));
+      output.writeln('  after:   ' + after);
+      output.writeln('');
+      output.writeln('Free RAM:');
+      output.writeln('  before:  ' + memBefore + ' GB');
+      output.writeln('  after:   ' + memAfter + ' GB');
+      output.writeln('');
+      output.writeln(output.dim('Note: does NOT touch cmd.exe/bash.exe/node.exe — those may be the invoking shell'));
+      output.writeln(output.dim('      or an active MCP server. Kill them manually if you need to.'));
+      output.writeln('');
+      output.writeln(output.dim('Upstream tracking: https://github.com/anthropics/claude-code/issues/67888'));
+      return { success: true };
+    }
 
     output.writeln();
     output.writeln(output.bold('RuFlo Doctor'));
