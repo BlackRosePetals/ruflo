@@ -209,8 +209,8 @@ importers:
         specifier: 2.0.0-alpha.5
         version: 2.0.0-alpha.5
       '@claude-flow/memory':
-        specifier: ^3.0.0-alpha.23
-        version: 3.0.0-alpha.24(@types/node@20.19.27)(zod@3.25.76)
+        specifier: 3.0.0-alpha.25
+        version: 3.0.0-alpha.25(@types/node@20.19.27)(zod@3.25.76)
       '@metaharness/darwin':
         specifier: ~0.10.2
         version: 0.10.2
@@ -919,6 +919,25 @@ packages:
 
   /@claude-flow/memory@3.0.0-alpha.24(@types/node@20.19.27)(zod@3.25.76):
     resolution: {integrity: sha512-V0ca9Nh7VusKbzjS+h59lnpBDKe4ZoQ0kYzYVzXypBYuvuhNF6ngRARbA/ZXCYwO7Uh85BNkQSGRe45TmOKjBg==}
+    cpu: [x64, arm64]
+    os: [darwin, linux, win32]
+    dependencies:
+      '@claude-flow/security': 3.0.0-alpha.12
+      agentdb: 3.0.0-alpha.17(@types/node@20.19.27)(zod@3.25.76)
+      sql.js: 1.14.1
+    optionalDependencies:
+      better-sqlite3: 12.9.0
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - '@types/node'
+      - bare-abort-controller
+      - bare-buffer
+      - react-native-b4a
+      - supports-color
+      - zod
+
+  /@claude-flow/memory@3.0.0-alpha.25(@types/node@20.19.27)(zod@3.25.76):
+    resolution: {integrity: sha512-yjeFlIlUkAE0jBUTx4ocvqWm71CsJEhps8gz0tU1Kl0POelxOsLsEUVQUCQ2E4ZEuQ0xii12K8+3tzK2hvWD3g==}
     cpu: [x64, arm64]
     os: [darwin, linux, win32]
     dependencies:
