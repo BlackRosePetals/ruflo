@@ -1068,9 +1068,11 @@ export function evaluateMemoryPackageVersion(declared: string | null, installed:
   if (semver.satisfies(installed, declared, { includePrerelease: true })) {
     return { name: NAME, status: 'pass', message: `v${installed} satisfies declared ${declared}` };
   }
+  // warn, not fail: a dev/hoisted layout can legitimately differ, and doctor's
+  // exit code must not depend on which copy a package manager happened to hoist.
   return {
     name: NAME,
-    status: 'fail',
+    status: 'warn',
     message: `installed v${installed} does not satisfy declared ${declared} — a stale cached copy is running, so fixes shipped in a newer @claude-flow/memory are silently absent`,
     fix: `rm -rf "$(npm config get cache)/_npx" && npx @claude-flow/cli@latest doctor   # or: npm install @claude-flow/memory@${declared}`,
   };

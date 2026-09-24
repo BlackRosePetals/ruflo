@@ -19,9 +19,9 @@ describe('#3392 evaluateMemoryPackageVersion', () => {
     expect(evaluateMemoryPackageVersion('3.0.0-alpha.25', '3.0.0-alpha.25').status).toBe('pass');
   });
 
-  it('fails on a stale copy that a caret range would have accepted', () => {
+  it('warns on a stale copy that a caret range would have accepted', () => {
     const check = evaluateMemoryPackageVersion('3.0.0-alpha.25', '3.0.0-alpha.24');
-    expect(check.status).toBe('fail');
+    expect(check.status).toBe('warn');
     expect(check.message).toContain('3.0.0-alpha.24');
     expect(check.fix).toContain('_npx');
     expect(check.fix).toContain('@claude-flow/memory@3.0.0-alpha.25');
@@ -58,12 +58,13 @@ describe('#3392 cli declares an exact @claude-flow/memory pin', () => {
 });
 
 describe('#3392 checkMemoryPackageVersion (real resolution)', () => {
-  it('reports the copy this CLI actually loads against its own pin', async () => {
+  it('reports on the copy this CLI actually loads, and never fails', async () => {
     const check = await checkMemoryPackageVersion();
     expect(check.name).toBe('@claude-flow/memory version');
-    // In a healthy install the loaded copy satisfies the pin; a warn is only
-    // acceptable when the optional package is genuinely not installed.
+    // Which copy is loaded depends on the install layout (a hoisted workspace
+    // can legitimately hold another version), so only the verdict's shape is
+    // asserted here; the version comparison itself is covered above.
     expect(['pass', 'warn']).toContain(check.status);
-    if (check.status === 'pass') expect(check.message).toContain(pkg.dependencies!['@claude-flow/memory']);
+    expect(check.message).toContain(pkg.dependencies!['@claude-flow/memory']);
   });
 });
