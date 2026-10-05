@@ -26,7 +26,12 @@ export type ModuleScan = {
 /** Calls that reach outside the session: commands, network, the environment. */
 const RISKY_CALLS: Record<string, string> = {
   'process.run': 'runs host commands',
+  'process.spawn': 'runs host commands',
   'http.fetch': 'makes network requests',
+  'mcp.call': 'calls MCP tools (any connected server)',
+  'mcp.connect': 'connects MCP servers',
+  'session.send': 'sends messages to other agents',
+  'config.set': 'changes Claude Code settings',
   'env.set': 'changes the environment of later hooks and tools',
   'fs.write': 'writes files (settings, hooks, helpers included)',
   'agent.spawn': 'starts agents with a prompt of its own',
@@ -92,7 +97,8 @@ export function registerTrust(on: On, policy: TrustPolicy, allow: ReadonlySet<st
   on('plugin.register', async ($, e, next) => {
     const decision = judge(e, policy, allow)
     if (!decision.judged) return next(e)
-    const key = `${e.provenance}:${decision.refuse ? 'refused' : 'loaded'}`
+    // Keyed on what the module can do: a reload that gains a risky call or hook is named again.
+    const key = `${e.provenance}:${decision.refuse ? 'refused' : 'loaded'}:${[...decision.risk].sort().join('|')}`
     if (!told.has(key)) {
       told.add(key)
       try {
