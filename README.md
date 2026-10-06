@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://cognitum.one/agentic-engineering"><img src="ruflo/assets/ruflo-neon-header.svg" alt="Ruflo neon sign with subtle flicker and occasional ASCII animation" width="100%"></a>
+[![Ruflo Banner](ruflo/assets/ruflo-small.jpeg)](https://cognitum.one/agentic-engineering)
 
 <a href="https://www.producthunt.com/products/ruos"><img src="ruflo/assets/ruos-animated.svg" alt="ruOS — A desktop that runs itself" width="100%"></a>
 
