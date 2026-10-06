@@ -2,7 +2,7 @@
 
 [![Ruflo Banner](ruflo/assets/ruflo-small.jpeg)](https://cognitum.one/agentic-engineering)
 
-[![ruOS — A desktop that runs itself](ruflo/assets/ruos-demo.gif)](https://ruos.cognitum.one)
+[![ruOS — A desktop that runs itself](ruflo/assets/ruos-animated.svg)](https://ruos.cognitum.one)
 
 <!-- Try Ruflo — the 3 badges first-time visitors actually act on -->
 [![npm version (ruflo)](https://img.shields.io/npm/v/ruflo?label=npx%20ruflo&style=for-the-badge&logo=npm&color=cb3837)](https://www.npmjs.com/package/ruflo)
