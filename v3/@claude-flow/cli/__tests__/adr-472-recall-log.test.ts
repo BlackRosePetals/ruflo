@@ -13,6 +13,7 @@ const HELPERS = resolve(__dirname, '../.claude/helpers');
 const INTEL = join(HELPERS, 'intelligence.cjs');
 const HANDLER = join(HELPERS, 'hook-handler.cjs');
 const PROMPT = 'please refactor the swarm coordination planner for the zebra topology';
+const SHORT_SECRET_ID = 'mem-ghp_abcdefghijkl-notes';
 const SECRET_ID = 'mem-sk-abcdefghijklmnopqrstuvwxyz0123456789ABCDEF-token';
 
 let root: string;
@@ -31,6 +32,7 @@ beforeEach(() => {
       entries: [
         entry('mem-swarm-planner-1', 'Swarm coordination planner notes', ['swarm', 'coordination', 'planner', 'zebra', 'topology'], 0.4),
         entry(SECRET_ID, 'Secret-looking id', ['swarm', 'planner', 'refactor', 'zebra'], 0.3),
+        entry(SHORT_SECRET_ID, 'Short secret id', ['swarm', 'planner', 'zebra'], 0.2),
         entry('mem-unrelated-3', 'Cooking notes', ['pasta', 'tomato'], 0.0),
       ],
     }),
@@ -54,7 +56,7 @@ describe('ADR-472 recall log', () => {
     expect(record?.v).toBe(1)
     expect(record?.sid).toBe('sess-1')
     expect(record?.digest).toBe(createHash('sha256').update(PROMPT).digest('hex').slice(0, 16))
-    expect(record?.surfaced.map((s: any) => s.rank)).toEqual([1, 2])
+    expect(record?.surfaced.map((s: any) => s.rank)).toEqual([1, 2, 3])
     expect(record?.surfaced[0].id).toBe('mem-swarm-planner-1')
     expect(record?.surfaced[0].score).toBeGreaterThan(0.05)
     expect(record?.router).toEqual({ agent: 'coder', confidence: 0.812 })
@@ -70,6 +72,7 @@ describe('ADR-472 recall log', () => {
     const raw = readFileSync(logPath(), 'utf-8');
 
     expect(raw).not.toContain('sk-abcdefghijklmnop');
+    expect(raw).not.toContain('ghp_abcdefghijkl');
     expect(raw).toContain('[masked]');
     expect(records()[0]?.sid).toBeNull();
     expect(records()[0]?.router).toBeUndefined();

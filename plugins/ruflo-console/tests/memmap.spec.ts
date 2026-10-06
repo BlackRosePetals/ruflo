@@ -107,7 +107,7 @@ describe('the readers', () => {
   })
 
   it('asks for the same bounded list as the Namespaces sample, on the memory view only', () => {
-    expect(memmapProbe.args).toEqual(['memory', 'list', '--format', 'json', '--limit', '500'])
+    expect(memmapProbe.args).toEqual(['memory', 'list', '--format', 'json', '--limit', '500', '--embeddings'])
     expect(memmapProbe.views).toEqual(['memory'])
   })
 
