@@ -2,7 +2,7 @@
 
 [![Ruflo Banner](ruflo/assets/ruflo-small.jpeg)](https://cognitum.one/agentic-engineering)
 
-<a href="https://ruos.cognitum.one"><img src="ruflo/assets/ruos-demo.gif" alt="ruOS — A desktop that runs itself" width="480"></a>
+<a href="https://ruos.cognitum.one"><img src="https://raw.githubusercontent.com/ruvnet/ruflo/main/ruflo/assets/ruos-demo.gif" alt="ruOS — A desktop that runs itself" width="480"></a>
 
 <!-- Try Ruflo — the 3 badges first-time visitors actually act on -->
 [![npm version (ruflo)](https://img.shields.io/npm/v/ruflo?label=npx%20ruflo&style=for-the-badge&logo=npm&color=cb3837)](https://www.npmjs.com/package/ruflo)
