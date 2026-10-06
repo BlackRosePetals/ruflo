@@ -3,7 +3,7 @@
 @keyframes drift{0%,100%{transform:scale(1)}50%{transform:scale(1.022)}}.camera{transform-origin:704px 352px;animation:drift 24s ease-in-out infinite}
 @keyframes pinkBreath{0%,100%{opacity:.22}50%{opacity:.65}}.pink{animation:pinkBreath 8s ease-in-out infinite}
 @keyframes cyanBreath{0%,100%{opacity:.2}50%{opacity:.65}}.cyan{animation:cyanBreath 6s ease-in-out infinite}
-@keyframes flicker{0%,15%,18%,66%,69%,100%{opacity:0}16%,67%{opacity:.28}}.flicker{animation:flicker 24s linear infinite}
+@keyframes flicker{0%,15%,18%,66%,69%,100%{opacity:0}16%,67%{opacity:.28}}.flicker{opacity:0;animation:flicker 24s linear infinite}
 @keyframes neon{0%,14%,19%,65%,70%,100%{opacity:.15}16%,67%{opacity:0}}.neon{animation:neon 24s linear infinite}
 @keyframes ascii{0%,43%,54%,100%{opacity:0;transform:translateY(5px)}45%,52%{opacity:1;transform:translateY(0)}}.ascii{opacity:0;animation:ascii 24s ease-in-out infinite}
 @keyframes scan{0%,42%{opacity:0;transform:translateY(-180px)}44%{opacity:.5}53%{opacity:.4;transform:translateY(190px)}55%,100%{opacity:0;transform:translateY(190px)}}.scan{animation:scan 24s linear infinite;opacity:0}
