@@ -24,13 +24,13 @@ function deps(over: Partial<SendDeps> & { env?: string | null; httpReply?: { ok:
     cwd: '/work/proj',
     hive,
     config: parseConfig('endpoint:metallm=https://gw.example.com/v1|COG_KEY|cognitum-auto; bbs:ops; x:pub:team'),
-    run: async (argv, timeoutMs, stdin) => {
+    run: (async (argv: readonly string[], timeoutMs: number, stdin?: string) => {
       rec.run.push({ argv, timeoutMs, ...(stdin !== undefined && { stdin }) })
 
       if (argv[0] === 'printenv') return over.env === null ? { exitCode: 1, stdout: '', stderr: '' } : { exitCode: 0, stdout: `${over.env ?? KEY}\n`, stderr: '' }
 
       return over.runReply?.(argv) ?? { exitCode: 0, stdout: 'Result:\n{"success":true}', stderr: '' }
-    },
+    }) as unknown as SendDeps['run'],
     httpSend: async (url, init) => { rec.http.push({ url, init }); return over.httpReply ?? { ok: true, status: 200, text: JSON.stringify({ model: 'm', choices: [{ message: { content: 'an answer' } }], usage: { prompt_tokens: 12, completion_tokens: 5 } }) } },
     submitPrompt: async text => { rec.prompts.push(text) },
     toolCall: async input => { rec.tool.push(input); return { text: '{"success":true,"message":"Message queued for delivery to sleeper at its next tool round."}' } },

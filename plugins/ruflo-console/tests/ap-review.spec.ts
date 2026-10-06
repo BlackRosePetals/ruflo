@@ -117,7 +117,7 @@ describe('stop is never undone', () => {
 
     const run = r.host.run
 
-    r.host.run = (async () => ({ exitCode: 1, stdout: '', stderr: 'no space left on device' })) as typeof r.host.run
+    r.host.run = (async () => ({ exitCode: 1, stdout: '', stderr: 'no space left on device' })) as unknown as typeof r.host.run
     await stopNow(state, r.host, 'disk is full')
     expect(r.toasts.join()).toContain('this session only')
 
