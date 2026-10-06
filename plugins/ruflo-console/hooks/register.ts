@@ -1,4 +1,5 @@
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
+import { tolerantPress } from './press-guard'
 import { ANSWER_KEYS } from './views/attention'
 
 import { createController, type Controller } from './controller'
@@ -261,7 +262,8 @@ export const register: Register = (on, raw: PluginOptions) => {
   on('ui.press', { component: 'Pane' }, ($, e, next) => {
     if (!ANSWER_KEYS.has(e.element)) state.lastPressed = e.element
 
-    return next(e)
+    // A click that reaches the engine after its drawing was replaced (a resize) finds no handler: answered quietly (press-guard.ts).
+    return tolerantPress(() => next(e), { element: e.element })
   })
 
   on('ui.input', { component: 'Pane' }, ($, e, next) => {
