@@ -14,10 +14,11 @@
 
 
 <p align="center">
-<a href="data/npm-downloads.latest.json"><img src="docs/assets/readme/badges/downloads.svg?v=equal-width-2" width="24%" alt="Ecosystem npm downloads: 12.52M over 12 months through October 4, 2026"></a>
-<a href="https://github.com/ruvnet/ruflo/blob/main/data/clone-data.ledger.json"><img src="docs/assets/readme/badges/clones.svg?v=equal-width-2" width="24%" alt="Git clones (14d)"></a>
-<a href="https://github.com/ruvnet/claude-flow"><img src="docs/assets/readme/badges/claude.svg?v=equal-width-2" width="24%" alt="Claude Code"></a>
-<a href="https://www.npmjs.com/package/@claude-flow/codex"><img src="docs/assets/readme/badges/codex.svg?v=equal-width-2" width="24%" alt="Codex Plugin"></a>
+<a href="data/npm-downloads.latest.json"><img src="docs/assets/readme/badges/downloads.svg?v=mobile-readable-3" width="300" alt="Ecosystem npm downloads: 12.52M over 12 months through October 4, 2026"></a>
+<a href="https://github.com/ruvnet/ruflo/blob/main/data/clone-data.ledger.json"><img src="docs/assets/readme/badges/clones.svg?v=mobile-readable-3" width="300" alt="Git clones (14d)"></a>
+<br>
+<a href="https://github.com/ruvnet/claude-flow"><img src="docs/assets/readme/badges/claude.svg?v=mobile-readable-3" width="300" alt="Claude Code"></a>
+<a href="https://www.npmjs.com/package/@claude-flow/codex"><img src="docs/assets/readme/badges/codex.svg?v=mobile-readable-3" width="300" alt="Codex Plugin"></a>
 </p>
 
 # Ruflo
