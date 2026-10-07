@@ -183,4 +183,34 @@ for k,(label,title,l1,l2) in enumerate(S):
  O.append(f'<text x="45" y="203" fill="#6998b7" font-size="13" letter-spacing="3">SEQUENCE 0{k+1} / 07</text><path class="ticker" d="M45 218H210M750 218H914" stroke="#3e91b5" opacity=".55"/><path d="M45 230V252M914 230V252M45 658V680H67M892 680H914V658" fill="none" stroke="#437d9c"/><rect class="cut" x="32" y="173" width="896" height="2" fill="#a9ecff"/>')
  for j in range(7):O.append(f'<rect x="{347+j*39}" y="875" width="28" height="4" rx="2" fill="{"#ff9e64" if j==k else "#2b3e51"}"/>')
  O.append('</g>')
-O.append('</svg>');svg=''.join(O);ET.fromstring(svg);(P/'learning-cinematic.svg').write_text(svg);print(len(points),'nodes;',len(svg),'bytes; XML valid')
+O.append('</svg>');svg=''.join(O)
+# Compact layout: preserve type sizes and scale only the illustration stage.
+ET.register_namespace('', 'http://www.w3.org/2000/svg')
+ET.register_namespace('xlink', 'http://www.w3.org/1999/xlink')
+root=ET.fromstring(svg); ns='{http://www.w3.org/2000/svg}'
+root.set('height','660');root.set('viewBox','0 0 960 660')
+for el in list(root):
+ if el.tag==ns+'rect' and el.get('height') in ['900','898']:el.set('height',str(int(el.get('height'))-240))
+ if el.tag==ns+'ellipse' and el.get('cy')=='470':el.set('cy','350');el.set('ry','210')
+ if el.tag==ns+'circle' and float(el.get('cy','0'))>176:el.set('cy',str(176+(float(el.get('cy'))-176)*.56))
+ if el.tag==ns+'path' and 'M26 810' in el.get('d',''):el.set('d',el.get('d').replace('810','570').replace('874','634'))
+ if el.get('class','').startswith('scene s'):
+  children=list(el); caption=next(x for x in children if x.get('class')=='caption')
+  middle=children[2:children.index(caption)]
+  wrapper=ET.Element(ns+'g',{'transform':'translate(168 62) scale(.65)'})
+  for x in middle:
+   el.remove(x)
+   if x.tag==ns+'text' and x.get('y')=='719':
+    x.set('y','493');el.append(x)
+   else:wrapper.append(x)
+  el.insert(2,wrapper)
+  # Use an outer group so the caption's animated transform remains intact.
+  ci=list(el).index(caption);el.remove(caption)
+  cg=ET.Element(ns+'g',{'transform':'translate(0 -240)'});cg.append(caption);el.insert(ci,cg)
+  for x in list(el):
+   if x.tag==ns+'rect' and x.get('y')=='875':x.set('y','635')
+   if x.tag==ns+'text' and x.get('y')=='203':x.set('y','187')
+   if x.tag==ns+'path' and 'M45 230' in x.get('d',''):x.set('d','M45 210V232M914 210V232M45 462V484H67M892 484H914V462')
+svg=ET.tostring(root,encoding='unicode');ET.fromstring(svg)
+(P/'learning-cinematic-compact.svg').write_text(svg)
+print(len(svg),'bytes; 960 x 660; XML valid')
