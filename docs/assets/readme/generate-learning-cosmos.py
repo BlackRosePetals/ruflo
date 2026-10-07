@@ -152,28 +152,35 @@ for camera in range(7):
   color=hues[i] if hues else ('#ffaf75' if i%29==0 else '#cceeff')
   O.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{1 if camera in [0,3] else 2}" fill="{color}" opacity=".85"/>')
  O.append('</g>');view_paths.append(routes)
-O.append('</defs>')
+O.append('<clipPath id="stage"><rect x="30" y="176" width="900" height="548" rx="20"/></clipPath><linearGradient id="beam"><stop stop-color="#49d9ff" stop-opacity="0"/><stop offset=".5" stop-color="#bdefff" stop-opacity=".3"/><stop offset="1" stop-color="#49d9ff" stop-opacity="0"/></linearGradient></defs>')
 css='text{font-family:Arial,Helvetica,sans-serif}.scene{opacity:0;animation:scene 49s linear infinite}.drift{transform-origin:480px 470px;animation:drift 14s ease-in-out infinite}.trace{stroke-dasharray:1200;stroke-dashoffset:1200;animation:trace 7s ease-in-out infinite}.pulse{transform-origin:480px 694px;animation:pulse 3s ease-out infinite}@keyframes pulse{0%{transform:scale(.5);opacity:.8}100%{transform:scale(2.5);opacity:0}}@keyframes drift{0%,100%{transform:perspective(900px) rotateY(-6deg) rotateZ(-1deg)}50%{transform:perspective(900px) rotateY(6deg) rotateZ(1deg)}}@keyframes trace{0%{stroke-dashoffset:1200}60%,90%{stroke-dashoffset:0}100%{stroke-dashoffset:-1200}}@keyframes scene{0%,13.1%{opacity:1}14.28%,100%{opacity:0}}'
+css+=' .camera{transform-origin:480px 450px;animation:camera 7s cubic-bezier(.2,.6,.3,1) infinite}.headline{animation:headline 7s ease-out infinite}.caption{animation:caption 7s ease-out infinite}.scanner{animation:scanner 7s ease-in-out infinite}.iris{transform-origin:480px 450px;animation:iris 21s linear infinite}.irisBack{transform-origin:480px 450px;animation:iris 35s linear infinite reverse}.cut{animation:cut 7s ease-out infinite}.ticker{stroke-dasharray:8 15;animation:ticker 5s linear infinite}@keyframes camera{0%{transform:translate(0,25px) scale(.7);opacity:0}9%{opacity:1}16%{transform:translate(0,0) scale(.9)}82%{transform:translate(0,-5px) scale(1.04);opacity:1}100%{transform:translate(0,-12px) scale(1.13);opacity:0}}@keyframes headline{0%,3%{opacity:0;transform:translate(25px,0)}13%,91%{opacity:1;transform:translate(0,0)}100%{opacity:0;transform:translate(-10px,0)}}@keyframes caption{0%,14%{opacity:0;transform:translate(0,10px)}24%,92%{opacity:1;transform:translate(0,0)}100%{opacity:0}}@keyframes scanner{0%,18%{transform:translateY(-240px);opacity:0}28%{opacity:.7}70%{transform:translateY(300px);opacity:0}100%{opacity:0}}@keyframes iris{to{transform:rotate(360deg)}}@keyframes ticker{to{stroke-dashoffset:-230}}@keyframes cut{0%{opacity:.65}9%,100%{opacity:0}}'
 for k in range(7):css+=f'.s{k}{{animation-delay:-{49-k*7}s}}'
-css+='@media(prefers-reduced-motion:reduce){.scene{animation:none;opacity:0}.s4{opacity:1}.drift,.trace,.pulse{animation:none}.trace{stroke-dashoffset:0}.motion{display:none}}'
+css+='@media(prefers-reduced-motion:reduce){.scene{animation:none;opacity:0}.s4{opacity:1}.drift,.trace,.pulse,.camera,.headline,.caption,.scanner,.iris,.irisBack,.ticker,.cut{animation:none}.cut,.scanner{display:none}.trace{stroke-dashoffset:0}.motion{display:none}}'
 O+=['<style>'+css+'</style>','<rect width="960" height="900" rx="24" fill="#020409"/><rect x="1" y="1" width="958" height="898" rx="23" fill="none" stroke="#26384b"/><ellipse cx="480" cy="470" rx="450" ry="320" fill="url(#bg)"/>']
 for i in range(125):
  x=R.randrange(28,934);y=R.randrange(170,726);O.append(f'<circle cx="{x}" cy="{y}" r=".7" fill="#759bb5" opacity=".3"/>')
 O.append('<path d="M26 92V26H105M855 26H934V92M26 810V874H105M855 874H934V810" stroke="#527088" fill="none"/><text x="44" y="51" fill="#95adc4" font-size="18" letter-spacing="4">RUFLO / LEARNING ENGINE</text><text x="916" y="51" text-anchor="end" fill="#647f95" font-size="15">CONCEPTUAL</text>')
 for k,(label,title,l1,l2) in enumerate(S):
- O.append(f'<g class="scene s{k}"><text x="44" y="96" fill="#ffab70" font-size="20" letter-spacing="3">{escape(label)}</text><text x="44" y="151" fill="#f5f8ff" font-size="44" font-weight="700" letter-spacing="-1">{escape(title)}</text><g class="drift">')
+ O.append(f'<g class="scene s{k}"><text class="headline" x="44" y="96" fill="#ffab70" font-size="20" letter-spacing="3">{escape(label)}</text><text class="headline" x="44" y="151" fill="#f5f8ff" font-size="44" font-weight="700" letter-spacing="-1">{escape(title)}</text><g clip-path="url(#stage)"><g class="camera">')
+ # Stage lighting, telemetry rings and depth trails precede the geometry.
+ O.append('<ellipse cx="480" cy="454" rx="370" ry="236" fill="none" stroke="#254764" opacity=".6"/><g class="iris"><ellipse cx="480" cy="450" rx="306" ry="226" fill="none" stroke="#5e9fc6" stroke-dasharray="45 80 5 30" opacity=".35"/></g><g class="irisBack"><circle cx="480" cy="450" r="249" fill="none" stroke="#5687a9" stroke-dasharray="2 17" opacity=".35"/></g>')
+ for n in range(28):
+  a=2*pi*n/28;rr=170+R.random()*170;x=480+rr*cos(a);y=450+rr*.72*sin(a)
+  O.append(f'<path d="M{x:.1f} {y:.1f}l{26*cos(a):.1f} {18*sin(a):.1f}" stroke="{"#72dfff" if n%3 else "#ffb579"}" stroke-width=".8" opacity=".3"><animate class="motion" attributeName="opacity" values="0;.6;0" dur="{2+n%4}s" begin="-{n*.23:.2f}s" repeatCount="indefinite"/></path>')
  O.append(f'<use xlink:href="#forest{k}"/>')
  paths=view_paths[k]
  for route in range(len(paths)):
   d=paths[route];O.append(f'<path class="trace" d="{d}" stroke="url(#route)" stroke-width="10" opacity=".75" fill="none" filter="url(#glow)"/><path class="trace" d="{d}" stroke="url(#route)" stroke-width="2.7" fill="none"/>')
   for delay in [0,1.5,3]:O.append(f'<circle class="motion" r="4" fill="#fff3df"><animateMotion dur="5s" begin="-{delay}s" repeatCount="indefinite" path="{d}"/></circle>')
- O.append('</g>')
+ O.append('</g><rect class="scanner" x="30" y="300" width="900" height="50" fill="url(#beam)"/></g>')
  O.append(f'<text x="916" y="719" text-anchor="end" fill="#87a6bd" font-size="16" letter-spacing="2">{view_names[k]}</text>')
  if k==2:
   O.append('<rect x="176" y="372" width="608" height="144" rx="20" fill="#030914" fill-opacity=".94" stroke="#485a72"/><path d="M320 435H640" stroke="#637c94" stroke-dasharray="4 7"/>')
   for x,c,t,vals in [(350,'#54efc0','POSITIVE','300;400;300'),(480,'#e9f5ff','ANCHOR','480;480;480'),(650,'#ff925d','NEGATIVE','580;690;580')]:
    O.append(f'<circle cx="{x}" cy="425" r="12" fill="{c}"><animate class="motion" attributeName="cx" values="{vals}" dur="5s" repeatCount="indefinite"/></circle><text x="{x}" y="483" text-anchor="middle" fill="{c}" font-size="19">{t}</text>')
- O.append(f'<rect x="32" y="744" width="896" height="114" rx="16" fill="#09111c" stroke="#293c50"/><text x="480" y="788" text-anchor="middle" fill="#edf4fd" font-size="27">{escape(l1)}</text><text x="480" y="829" text-anchor="middle" fill="#a9bfd2" font-size="25">{escape(l2)}</text>')
+ O.append(f'<g class="caption"><rect x="32" y="744" width="896" height="114" rx="16" fill="#09111c" stroke="#293c50"/><text x="480" y="788" text-anchor="middle" fill="#edf4fd" font-size="27">{escape(l1)}</text><text x="480" y="829" text-anchor="middle" fill="#a9bfd2" font-size="25">{escape(l2)}</text></g>')
+ O.append(f'<text x="45" y="203" fill="#6998b7" font-size="13" letter-spacing="3">SEQUENCE 0{k+1} / 07</text><path class="ticker" d="M45 218H210M750 218H914" stroke="#3e91b5" opacity=".55"/><path d="M45 230V252M914 230V252M45 658V680H67M892 680H914V658" fill="none" stroke="#437d9c"/><rect class="cut" x="32" y="173" width="896" height="2" fill="#a9ecff"/>')
  for j in range(7):O.append(f'<rect x="{347+j*39}" y="875" width="28" height="4" rx="2" fill="{"#ff9e64" if j==k else "#2b3e51"}"/>')
  O.append('</g>')
-O.append('</svg>');svg=''.join(O);ET.fromstring(svg);(P/'learning-hyperdimensions.svg').write_text(svg);print(len(points),'nodes;',len(svg),'bytes; XML valid')
+O.append('</svg>');svg=''.join(O);ET.fromstring(svg);(P/'learning-cinematic.svg').write_text(svg);print(len(points),'nodes;',len(svg),'bytes; XML valid')
