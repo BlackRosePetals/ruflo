@@ -40,7 +40,11 @@ MCP exposes Ruflo tools to your client. The console and mods above are Claude Co
 
 <a href="https://ruos.cognitum.one"><img src="ruflo/assets/ruos-animated.svg" alt="ruOS — A desktop that runs itself" width="100%"></a>
 
-**Connect ruOS to ChatGPT or Claude via MCP:** [https://ruos.cognitum.one/mcp](https://ruos.cognitum.one/mcp)
+**Connect ruOS to ChatGPT or Claude via MCP:**
+
+```text
+https://ruos.cognitum.one/mcp
+```
 
 
 <!-- Try Ruflo — the 3 badges first-time visitors actually act on -->
@@ -50,6 +54,10 @@ MCP exposes Ruflo tools to your client. The console and mods above are Claude Co
 
 <!-- Animated ecosystem badges; downloads use data/npm-downloads.latest.json; clone value preserves its earlier snapshot. -->
 <a href="https://github.com/ruvnet/ruvector"><img src="docs/assets/readme/ruvector-promo-depth.svg" width="100%" alt="RuVector: Give your agents memory. Local vector search, persistent context, graph relationships and feedback learning. Explore RuVector."></a>
+
+```bash
+npx ruvector
+```
 
 
 <p align="center">
