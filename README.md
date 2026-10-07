@@ -199,7 +199,7 @@ This adds slash commands and agent definitions. `ruflo-core` (installed above) d
 
 </details>
 
-### CLI Install
+### <img src="docs/assets/readme/icons/terminal.svg" width="28" height="28" alt=""> CLI Install
 
 **macOS / Linux / WSL / Git-Bash:**
 
@@ -223,7 +223,7 @@ npm install -g ruflo@latest
 
 > 💡 **Windows users:** the `curl ... | bash` form needs a POSIX shell (Git-Bash, WSL, MSYS). The `npx ruflo@latest init wizard` line works natively in PowerShell and cmd. If you hit an `'bash' is not recognized` error, use the `npx` line instead — both end up running the same init flow.
 
-### MCP Server
+### <img src="docs/assets/readme/icons/network.svg" width="28" height="28" alt=""> MCP Server
 
 ```bash
 # Add Ruflo as an MCP server in Claude Code
@@ -244,19 +244,19 @@ claude mcp add claude-flow -- npx ruflo@latest mcp start
 
 | Capability | Description |
 |------------|-------------|
-| 🤖 **100+ Agents** | Specialized agents for coding, testing, security, docs, architecture |
-| 📡 **Comms Layer** | Zero-trust federation — agents across machines/orgs discover, authenticate, and exchange work securely |
-| 🐝 **Swarm Coordination** | Hierarchical, mesh, and adaptive topologies with consensus |
-| 🧠 **Self-Learning** | SONA neural patterns, ReasoningBank, trajectory learning |
-| 💾 **Vector Memory** | HNSW-indexed AgentDB — measured ~1.9x faster at N=20k, ~3.2x–4.7x at N=5k vs brute force (recall@10 ~0.99); ANN wins above the crossover, ties/loses at small N. See [audit](docs/reviews/intelligence-system-audit-2026-05-29.md) + [`scripts/benchmark-intelligence.mjs`](scripts/benchmark-intelligence.mjs) |
-| ⚡ **Background Workers** | 12 auto-triggered workers (audit, optimize, testgaps, etc.) |
-| 🧩 **Plugin Marketplace** | 33 native Claude Code plugins + 21 npm plugins |
-| 🔌 **Multi-Provider** | Claude, GPT, Gemini, Cohere, Ollama with smart routing |
-| 🛡️ **Security** | AIDefence, input validation, CVE remediation, path traversal prevention |
-| 🌐 **Agent Federation** | Cross-installation agent collaboration with zero-trust security |
-| 🔬 **[MetaHarness](docs/metaharness-user-guide.md)** | Audit your AI agent setup before you ship. Grade readiness (1-100), scan tool configs for security issues, snapshot the whole project to catch regressions over time, and find templates that match your repo. `ruflo eject` turns a ruflo project into a standalone agent toolkit with its own name. [Full guide](docs/metaharness-user-guide.md). |
+| <img src="docs/assets/readme/icons/agents.svg" width="28" height="28" alt=""> **100+ Agents** | Specialized agents for coding, testing, security, docs, architecture |
+| <img src="docs/assets/readme/icons/network.svg" width="28" height="28" alt=""> **Comms Layer** | Zero-trust federation — agents across machines/orgs discover, authenticate, and exchange work securely |
+| <img src="docs/assets/readme/icons/swarm.svg" width="28" height="28" alt=""> **Swarm Coordination** | Hierarchical, mesh, and adaptive topologies with consensus |
+| <img src="docs/assets/readme/icons/learning.svg" width="28" height="28" alt=""> **Self-Learning** | SONA neural patterns, ReasoningBank, trajectory learning |
+| <img src="docs/assets/readme/icons/memory.svg" width="28" height="28" alt=""> **Vector Memory** | HNSW-indexed AgentDB — measured ~1.9x faster at N=20k, ~3.2x–4.7x at N=5k vs brute force (recall@10 ~0.99); ANN wins above the crossover, ties/loses at small N. See [audit](docs/reviews/intelligence-system-audit-2026-05-29.md) + [`scripts/benchmark-intelligence.mjs`](scripts/benchmark-intelligence.mjs) |
+| <img src="docs/assets/readme/icons/workers.svg" width="28" height="28" alt=""> **Background Workers** | 12 auto-triggered workers (audit, optimize, testgaps, etc.) |
+| <img src="docs/assets/readme/icons/plugins.svg" width="28" height="28" alt=""> **Plugin Marketplace** | 33 native Claude Code plugins + 21 npm plugins |
+| <img src="docs/assets/readme/icons/routing.svg" width="28" height="28" alt=""> **Multi-Provider** | Claude, GPT, Gemini, Cohere, Ollama with smart routing |
+| <img src="docs/assets/readme/icons/security.svg" width="28" height="28" alt=""> **Security** | AIDefence, input validation, CVE remediation, path traversal prevention |
+| <img src="docs/assets/readme/icons/federation.svg" width="28" height="28" alt=""> **Agent Federation** | Cross-installation agent collaboration with zero-trust security |
+| <img src="docs/assets/readme/icons/audit.svg" width="28" height="28" alt=""> **[MetaHarness](docs/metaharness-user-guide.md)** | Audit your AI agent setup before you ship. Grade readiness (1-100), scan tool configs for security issues, snapshot the whole project to catch regressions over time, and find templates that match your repo. `ruflo eject` turns a ruflo project into a standalone agent toolkit with its own name. [Full guide](docs/metaharness-user-guide.md). |
 
-### Learning from experience
+### <img src="docs/assets/readme/icons/learning.svg" width="28" height="28" alt=""> Learning from experience
 
 <p align="center"><img src="docs/assets/readme/learning-flow.svg" width="100%" alt="Recall, execute, evaluate, store, adapt and reuse: an illustrative agent learning cycle."></p>
 
