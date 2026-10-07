@@ -5,6 +5,7 @@
  * draws, with the claim record extended by its timestamps and context. Every one takes text another process wrote, so
  * each tolerates any shape: what it cannot read is left out, never guessed. Nothing here keeps the hive's `hiveToken`.
  */
+import { countOf, ratioOf, timeOf } from './safe'
 
 /** Text longer than this is not parsed: a store that size is not one the CLI wrote, and parsing it would stall a hook. */
 export const MAX_TEXT = 4_000_000
@@ -13,14 +14,23 @@ export const MAX_RECORDS = 1_000
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}$/
 
-/** Plain printable text of at most `max` characters: no control or bidi-override characters reach the terminal. */
+// Whole escape sequences go first (the CLI colours its output; a hostile file may carry a hyperlink or a title): stripping only the ESC byte
+// would leave `[1m` or `]8;;https://…` in the text. Written as \u escapes so no invisible character sits in this source.
+export const ESCAPES = new RegExp('\\u001b\\][^\\u0007\\u001b]*(?:\\u0007|\\u001b\\\\)|\\u009d[^\\u0007\\u009c]*[\\u0007\\u009c]|(?:\\u001b\\[|\\u009b)[0-9;?]*[ -/]*[@-~]', 'g')
+// Controls, DEL, C1, soft hyphen, combining grapheme joiner, Arabic letter mark, zero-width and bidi characters, invisible operators,
+// variation selectors, Hangul fillers and BOM: nothing a person could read, all of them fit for hiding or reordering text.
+export const HIDDEN = new RegExp('[\\u0000-\\u001f\\u007f-\\u009f\\u00ad\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u180b-\\u180f\\u200b-\\u200f\\u2028\\u2029\\u202a-\\u202e\\u2060-\\u206f\\u3164\\ufe00-\\ufe0d\\ufeff\\uffa0\\ufff9-\\ufffb]|[\\u{e0000}-\\u{e0fff}]', 'gu')
+
+/** The zero-width and format characters that can split a credential or a keyword without being seen: removed (not spaced) before any mask or pattern runs. */
+export const INVISIBLE = new RegExp('[\\u00ad\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u180b-\\u180f\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u206f\\u3164\\ufe00-\\ufe0f\\ufeff\\uffa0\\ufff9-\\ufffb]|[\\u{e0000}-\\u{e0fff}]', 'gu')
+
+/** Plain printable text of at most `max` characters: no escape sequence, control, hidden or bidi-override character reaches the terminal. */
 export function plain(value: unknown, max = 200): string {
   if (typeof value !== 'string') {
     return ''
   }
 
-  // Whole ANSI sequences first (the CLI colours its output): stripping only the ESC byte left `[1m` in log lines.
-  const cleaned = value.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩]/g, ' ').replace(/\s+/g, ' ').trim()
+  const cleaned = value.replace(ESCAPES, '').replace(INVISIBLE, '').replace(HIDDEN, ' ').replace(/\s+/g, ' ').trim()
 
   return cleaned.length <= max ? cleaned : `${cleaned.slice(0, Math.max(0, max - 1))}…`
 }
@@ -57,7 +67,7 @@ export const valuesOf = (value: unknown): unknown[] => {
 /** An ISO time to epoch milliseconds, or undefined. */
 export const msOf = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-    return value
+    return timeOf(value)
   }
 
   const parsed = typeof value === 'string' ? Date.parse(value) : Number.NaN
@@ -67,7 +77,20 @@ export const msOf = (value: unknown): number | undefined => {
 
 export type SwarmInfo = { id: string; topology: string; status: string; maxAgents?: number; strategy?: string; agentIds: string[]; updatedAt?: string }
 export type AgentRecord = { id: string; type: string; name?: string; status: string; health?: number; taskCount?: number; createdAtMs?: number }
-export type TaskRecord = { id: string; type: string; description: string; status: string; assignedTo: string[]; createdAtMs?: number }
+export type TaskRecord = {
+  id: string
+  type: string
+  description: string
+  status: string
+  assignedTo: string[]
+  createdAtMs?: number
+  /** `mission:<id>` / `task:<id>` style labels (plain words only), as `task_create` stored them. */
+  tags?: string[]
+  startedAtMs?: number
+  completedAtMs?: number
+  /** What `task_complete` / `task_update` recorded as the result, flattened to `key: value` text (bounded). */
+  resultText?: string
+}
 export type Claimant = { kind: 'agent' | 'human'; id: string; agentType?: string; name?: string }
 export type ClaimRecord = {
   issueId: string
@@ -146,7 +169,7 @@ export function parseSwarmStore(text: string | null): SwarmInfo | null {
         return agentId !== null ? [agentId] : []
       }),
     }
-    const maxAgents = numberOf(swarm.maxAgents)
+    const maxAgents = countOf(swarm.maxAgents)
     const strategy = stringOf(config?.strategy, 40)
     const updatedAt = stringOf(swarm.updatedAt, 40)
 
@@ -194,8 +217,8 @@ export function parseAgents(text: string | null): AgentRecord[] {
 
     const record: AgentRecord = { id, type: stringOf(agent.agentType, 40) ?? 'agent', status: stringOf(agent.status, 20) ?? 'unknown' }
     const name = stringOf(agent.name, 40)
-    const health = numberOf(agent.health)
-    const taskCount = numberOf(agent.taskCount)
+    const health = ratioOf(agent.health)
+    const taskCount = countOf(agent.taskCount)
     const createdAtMs = msOf(agent.createdAt)
 
     if (name !== undefined) record.name = name
@@ -208,6 +231,20 @@ export function parseAgents(text: string | null): AgentRecord[] {
 }
 
 /** `.claude-flow/tasks/store.json`. */
+/** A task's result object as one bounded line of `key: value` pairs (strings and numbers only), or undefined. */
+function resultTextOf(value: unknown): string | undefined {
+  const result = recordOf(value)
+
+  if (result === null) return typeof value === 'string' ? plain(value, 400) || undefined : undefined
+
+  const text = Object.entries(result)
+    .slice(0, 8)
+    .flatMap(([key, v]) => (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? [`${plain(key, 24)}: ${plain(String(v), 160)}`] : []))
+    .join(' · ')
+
+  return text === '' ? undefined : text.slice(0, 500)
+}
+
 export function parseTasks(text: string | null): TaskRecord[] {
   return valuesOf(jsonObject(text)?.tasks).flatMap(entry => {
     const task = recordOf(entry)
@@ -223,6 +260,10 @@ export function parseTasks(text: string | null): TaskRecord[] {
             status: stringOf(task.status, 20) ?? 'unknown',
             assignedTo: (Array.isArray(task.assignedTo) ? task.assignedTo : []).slice(0, 50).flatMap(agent => (idOf(agent) !== null ? [agent as string] : [])),
             ...(msOf(task.createdAt) !== undefined && { createdAtMs: msOf(task.createdAt) }),
+            tags: (Array.isArray(task.tags) ? task.tags : []).slice(0, 12).flatMap(tag => (typeof tag === 'string' && /^[A-Za-z0-9_.:-]{1,90}$/.test(tag) ? [tag] : [])),
+            ...(msOf(task.startedAt) !== undefined && { startedAtMs: msOf(task.startedAt) }),
+            ...(msOf(task.completedAt) !== undefined && { completedAtMs: msOf(task.completedAt) }),
+            ...(resultTextOf(task.result) !== undefined && { resultText: resultTextOf(task.result) }),
           },
         ]
   })
@@ -355,8 +396,8 @@ function decisionOf(entry: unknown): Decision | null {
     id,
     type: stringOf(decision.type, 40) ?? 'proposal',
     result: stringOf(decision.result, 20) ?? 'unknown',
-    votesFor: numberOf(votes?.for) ?? 0,
-    votesAgainst: numberOf(votes?.against) ?? 0,
+    votesFor: countOf(votes?.for) ?? 0,
+    votesAgainst: countOf(votes?.against) ?? 0,
     byzantine: idsOf(decision.byzantineDetected).length,
   }
   const strategy = stringOf(decision.strategy, 20)

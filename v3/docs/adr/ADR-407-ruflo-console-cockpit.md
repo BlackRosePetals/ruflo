@@ -19,7 +19,7 @@ The console is the person's cockpit for a ruflo project inside Claude Code: one 
 Every page draws, top to bottom:
 1. **Banner**: the animated RUFLO logo with the project name.
 2. **Wildcat strip**: `RUFLO x.ruv.io AGENTS WELCOME.` and `NETWORKS: …`.
-3. **Tabs**: emoji tabs with hotkeys. A view without a hotkey (`key: ''`) is a tab without one, reached by name.
+3. **Tabs**: emoji tabs with hotkeys; every view has one (ADR 408 §6).
 4. **Block title**: the view's name in two-row half-block art.
 5. **Blurb**: `>> icon NAME :: what it is for`.
 6. **Body**.
@@ -181,6 +181,43 @@ The MetaHarness view (`views/metaharness.ts`, `views/mh-lab.ts`, `mh-lab.ts`) ke
 **Result panel.** Shows the label, the exit, the cost note and the output lines. j/k scrolls it.
 
 The audit-list probe now reads the fields the CLI emits (`key`, `startedAt`, `finishedAt`); before, the trend never had real points.
+
+## 11a. Labs and starts (0.8.0)
+
+Every ruflo capability is a view with buttons and fields, never a command to copy. Besides the first eleven areas, 0.8.0 adds keyless views reached from the main menu, the tab, or `/ruflo <name>`:
+
+| View | What it covers | Notes |
+|---|---|---|
+| Memory Lab | browse, search, store, delete, AgentDB, embeddings, upkeep | two stores; the CLI reads one, the view warns |
+| Cost & Budget | set a budget, where spend goes, the burn projection | the one write sends only `costBudgetUsd` to `claude plugin configure ruflo-mods@ruflo --values-stdin` |
+| Security & Doctor, Performance | scans, paste check, policy, every doctor check; metrics, profile, benchmarks | scans write `.claude/security-scans`, so they ask first |
+| Automation, Learning Lab | workflows, the 12 workers, autopilot, sessions, config, a task kanban; train, route, explain | per-row verbs come from the lists last read |
+| Vector Lab | the ruvector CLI (pinned version): shared brain, RVF, workers, edge, hooks, identity | rvlite queries are MCP-only and go to the terminal typed, never run |
+| Self-Evolution | flywheel receipts, ledger, lineage, the policy gate, the witness, Autogenous and rGi | promotion is never offered from the pane |
+| Dev Tools | GitHub reads, diff analysis, agenticow, WASM, browser, terminal, providers, maintenance | GitHub rows are read-only |
+| Skills (plus) | use without installing, preview, add to chosen agents, update, restore, sync | |
+
+Empty sections offer the start (`init`, `daemon`, `swarm`, spawn, `hive-mind init`, `pretrain`, a task, a mission) as a confirm-gated button. The x.ruv.io board's rows are whole-row buttons: pressing a name runs its read, asks for its write, or focuses its field; unregister says why in the Result panel (the gateway has no leave endpoint).
+
+Two layout rules came from live clicks that seemed dead: the Result panel sits at the top of the x.ruv.io board and the confirm row above every view's body, because in a tall view anything below the fold is never seen.
+
+`tests/conformance.spec.ts` (`RUFLO_CONFORMANCE=1`) runs every action's argv against the real CLI's help and source, every `mcp exec` tool name against the registered tools, and the Vector Lab's argv against the ruvector CLI.
+
+## 11b. Plugin Catalog (0.9.0)
+
+`/ruflo market` (the Plugins view's ▸ button, the main menu, the tab) lists every plugin the ruflo marketplace offers, read from the marketplace clone on disk: nothing is run to draw it. Each row shows its state (■ enabled, □ installed, · not installed) and what it ships (S skills, A agents, C commands, MCP, MOD for function hooks, from a `hooks/register.ts`). Pressing a row opens its skills (with the description from each SKILL.md), agents and commands above the list; ▸ view reads the file from disk (bounded, read-only) and ▸ use types `/<plugin>:<skill>` into the AI terminal draft without sending it. Modes (all, installed, not installed, mods, has skills, has agents) and a text filter narrow the list.
+
+A change is one fixed `claude plugin <install|uninstall|enable|disable|update> <name>@ruflo --scope user` argv on the confirm row, with its cost in words (install and update reach GitHub). Only a name found in the catalog is ever put in an argv; `/ruflo run catalog-install <name>` (and the other four verbs) works headless and refuses anything else. Conformance checks that each verb exists and takes `--scope`. A button sweep (`tests/sweep.test.ts`) presses every button of every view and fails on one that changes nothing, except a short allowlist of cursor-only and self-link buttons.
+
+## 11c. Settings, the AI terminal and the page chrome (0.10.0)
+
+- **Page titles.** Every page but the main menu leads with `RUFLO ░▒▓▒░ PAGE ░▒▓` (the RUFLO letters sweep like the menu banner) and its purpose line, then the welcome and network lines with a blank row either side, then a titled **NAV** bar. The menu keeps the RUFLO banner. The nav spells its tabs as auto, icons only, icon and brief title, or icon and full title (saved; Settings > Interface).
+- **Settings** (`/ruflo settings`) is driven by `claude plugin configure <plugin> --json`, so the console, ruflo-mods and every ruflo plugin with options share one editor; `ruflo config get|set` covers a curated list of ruflo keys; the AI terminal's model and per-turn budget are saved preferences. Simple shows the few that matter, advanced shows all; a search box finds any setting in either level; a ● marks a value that differs from its default. A change is `claude plugin configure <plugin>@ruflo --values-stdin` with one key (values are single-line strings) behind a confirm; an option that looks like a secret is never shown or edited.
+- **AI terminal.** `claude -p` is the default. An **ask** link (Settings, Self-Evolution) sends its explaining prompt at once, so the reply streams in with no second click. **Always accept AI turns** (confirm row, reset in Settings) skips the confirm for claude, codex and swarm turns, which stay read-only, in plan mode and under the saved budget; ruflo commands still ask. The conversation is a window with a clickable scrollbar; the wheel and PgUp/PgDn move it (the `ui.scroll` hook) so the header and the field stay put.
+- **Remembered actions.** A low-risk ruflo command (spawn a hive scout) offers **Always allow “<kind>”**; that kind then runs without asking. A kind is the command (for `mcp exec`, the tool). Never offered for anything that reaches the network, spends, deletes, publishes, registers, grants, restarts, changes configuration, runs another program or takes stdin (`hooks/remember.ts`). Settings lists each kind and forgets it.
+- **Entry fields** clear after Enter (the field is drawn from `state.fieldText`, emptied on submit); a field that passes its own `value` is a form field its caller owns.
+- **Collapsible sections** (`section()`): the header is a button (▾/▸); the AI terminal's harness picker is the last section of its page.
+- Hive-Mind's ACT menu leads the page, in its own frame.
 
 ## 12. Release gates
 

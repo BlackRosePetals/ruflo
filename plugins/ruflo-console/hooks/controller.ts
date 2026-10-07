@@ -5,22 +5,37 @@
  */
 import { actionsOf } from './bindings'
 import type { Catalog } from './data/catalog'
-import { PROBES, type ProbeResult } from './data/cli'
+import { PROBES, probeArgv, probeError, probeReady, type ProbeResult } from './data/cli'
+import { ALL_COST_PROBES as COST_PROBES } from './data/cost-probes'
+import { memmapProbe } from './data/memmap'
+import { memoryHealthProbe } from './data/memory-health'
+import { X_PROBES } from './data/xruv'
 import { diffEvents, record } from './data/events'
+import { agentName, announceChanges, factsOf, segmentOf } from './notices'
 import { plain } from './data/parse'
 import { readSnapshot } from './data/snapshot'
 import { markPicture } from './gfx/pictures'
 import type { Host } from './host'
 import { agentLogs } from './ops'
 import { createRunner, type Runner } from './runner'
+import { advance, loadLedger, mcOf } from './mission-control'
+import { hasLiveWork } from './mission-list'
+import { loadAllowed } from './remember'
+import { loadAiPrefs } from './settings'
+import { openLoaders } from './view-open'
 import { listSkills } from './skills'
-import { CLI_PREFIXES, isBooting, PANE_ID, push, rowsOf, storeKeyOf, type State } from './state'
+import { readDrillLogs } from './drill-logs'
+import { entryAge } from './menu-entry'
+import { BOOT_MIN_MS, CLI_PREFIXES, isBooting, NAV_KEY, NAV_STYLES, PANE_ID, push, rowsOf, storeKeyOf, type State } from './state'
 import type { Actions } from './views/common'
 import { picturesOf } from './views/frames'
+import { pulseDue } from './pulse'
+import { refreshWorkflows } from './wf-live'
 
 const ACTIVITY_BUCKET_MS = 5_000
 const PANE_WATCH_MS = 1_000
 const MAX_PARALLEL_PROBES = 2
+const ALL_PROBES = [...PROBES, ...X_PROBES, ...COST_PROBES, memmapProbe, memoryHealthProbe] // CLI probes, the x.ruv.io board's network reads, cost, the memory map's list: one cadence and option gate
 const BAR_FRESH_MS = 10_000
 const IDLE_REFRESH_MS = 30_000
 const TOOLS_RECOUNT_MS = 30_000
@@ -50,19 +65,6 @@ export type Controller = {
   /** Blits the band's mark while Claude works; the band calls it with its requestId. */
   markFrame: (requestId: string, isWorking: boolean) => void
 }
-
-/** With the band off, the console's words ride ruflo-mods' status line instead: claims and a stale marketplace only. */
-export function segmentOf(state: State): string | null {
-  const claims = state.snapshot?.claims ?? []
-  const parts = [claims.length > 0 ? `${claims.length} claims` : '', state.snapshot?.plugins.missingFromClone.length ? 'marketplace stale' : ''].filter(Boolean)
-
-  return parts.length === 0 ? null : parts.join(' · ')
-}
-
-const sorted = (values: readonly number[]) => [...values].sort((a, b) => a - b)
-
-export const median = (values: readonly number[]) => sorted(values)[Math.floor(values.length / 2)] ?? 0
-export const p95 = (values: readonly number[]) => sorted(values)[Math.min(values.length - 1, Math.floor(values.length * 0.95))] ?? 0
 
 export function createController(state: State, host: Host): Controller {
   let activityCount = 0
@@ -121,10 +123,15 @@ export function createController(state: State, host: Host): Controller {
       ])
       const previous = state.snapshot
       const now = Date.now()
-      const snapshot = await readSnapshot(host.fs, state.cache, state.cwd, state.home, settings, now, state.configDir)
+      const snapshot = await readSnapshot(host.fs, state.cache, state.cwd, state.home, settings, now, state.configDir, state.options.federationNetwork)
+      if (snapshot.hasNostrKey === false) state.nostrKeyVerifiedAtMs = null
+      // What changed since the last read is announced on the band (the first read announces nothing).
+      const before = previous === null ? null : factsOf(state, now)
 
       state.snapshot = snapshot
       record(state.events, diffEvents(previous, snapshot, now))
+
+      if (before !== null) announceChanges(state, before, now)
 
       if (route !== null && route.agent !== state.ruflo.route?.agent) record(state.events, [{ atMs: now, kind: 'learning', text: `router picked ${route.agent} (${Math.round(route.confidence * 100)}%)` }])
 
@@ -177,7 +184,7 @@ export function createController(state: State, host: Host): Controller {
   const probesInFlight = new Map<string, Promise<void>>()
 
   /** One probe run at a time per probe: a second ask while it runs joins it. */
-  function runProbe(probe: (typeof PROBES)[number]): Promise<void> {
+  function runProbe(probe: (typeof ALL_PROBES)[number]): Promise<void> {
     const held = probesInFlight.get(probe.id)
 
     if (held !== undefined) return held
@@ -189,16 +196,16 @@ export function createController(state: State, host: Host): Controller {
     return run
   }
 
-  async function runProbeOnce(probe: (typeof PROBES)[number]): Promise<void> {
+  async function runProbeOnce(probe: (typeof ALL_PROBES)[number]): Promise<void> {
     const held: ProbeResult = state.probes.get(probe.id) ?? { value: null, okAtMs: null, error: null, errorAtMs: null, isRunning: false }
 
     state.probes.set(probe.id, { ...held, isRunning: true })
     lastAttempt.set(probe.id, Date.now())
 
     try {
-      const result = await host.run([...CLI_PREFIXES[state.options.cli], ...probe.args], probe.timeoutMs)
+      const argv = probeArgv(probe, state.options.cli, state)
+      const result = await host.run(argv, probe.timeoutMs)
       const value = result.exitCode === 0 ? (probe.parse(result.stdout) as unknown) : null
-
       state.probes.set(
         probe.id,
         value !== null
@@ -207,7 +214,7 @@ export function createController(state: State, host: Host): Controller {
               ...held,
               isRunning: false,
               errorAtMs: Date.now(),
-              error: result.exitCode !== 0 ? `exit ${result.exitCode}: ${plain(result.stderr.split('\n').find(line => line.trim() !== '') ?? '', 100) || 'no message'}` : 'no JSON in the CLI output',
+              error: probeError(argv, result),
             },
       )
     } catch (error) {
@@ -220,11 +227,11 @@ export function createController(state: State, host: Host): Controller {
   /** Runs the probes the view in front draws, each no more often than its cadence; `force` ignores the cadence. */
   async function probe(force = false): Promise<void> {
     const now = Date.now()
-    const due = PROBES.filter(
+    const due = ALL_PROBES.filter(
       entry =>
         (isVisible() || force) &&
         entry.views.includes(state.view) &&
-        (!entry.isNetwork || state.options.federationNetwork) &&
+        (!entry.isNetwork || state.options.federationNetwork) && probeReady(entry, state) &&
         (force || (state.probes.get(entry.id)?.isRunning !== true && now - (lastAttempt.get(entry.id) ?? 0) >= entry.everyMs)),
     )
 
@@ -242,17 +249,17 @@ export function createController(state: State, host: Host): Controller {
     state.timers.delete(name)
   }
 
-  /** One frame of every picture of the view in front, each blitted only at the size it was mounted. */
-  // Whether the last frame drew the boot screen: when it ends the whole pane redraws once, and an unfocused pane's
-  // loop stops again (the boot screen animates whether or not the pane holds the keys).
+  // Whether the last frame drew the boot screen: when it ends the whole pane redraws once, and an unfocused pane's loop stops again.
   let wasBooting = false
 
+  /** One frame of every picture of the view in front, each blitted only at the size it was mounted. */
   function frame(): void {
     const started = Date.now()
     const booting = isBooting(state, started)
 
     if (wasBooting && !booting) {
       wasBooting = false
+      state.pane.menuAtMs = Date.now()
       host.invalidate()
       animate()
 
@@ -260,6 +267,8 @@ export function createController(state: State, host: Host): Controller {
     }
 
     wasBooting = booting
+
+    if (pulseDue(state.view, started) || (state.view === 'menu' && entryAge({ look: state.options.look, boot: state.options.boot, ...state.pane }, started, BOOT_MIN_MS) !== null)) host.invalidate()
 
     for (const [key, grid] of picturesOf(state, state.pane.columns, Date.now(), Date.now())) {
       const mounted = state.mounted.get(key)
@@ -274,11 +283,10 @@ export function createController(state: State, host: Host): Controller {
 
   /** Runs the frame loop while the pane is shown and holds the keys (or plays the boot screen), at `fps`; stops it otherwise. */
   function animate(): void {
-    if (!(state.options.fps > 0 && isVisible() && (state.pane.isFocused || isBooting(state, Date.now())) && state.mounted.size > 0)) {
-      cancel('frames')
+    // Something in progress moves its spinner, pictured or not: a lab action in flight, or a live mission, task or guidance run on the Missions page.
+    const moving = state.lab.running !== null || (state.view === 'missions' && hasLiveWork(state.snapshot?.missions?.missions ?? [], mcOf(state).guidance?.status === 'running'))
 
-      return
-    }
+    if (!(state.options.fps > 0 && isVisible() && (state.pane.isFocused || isBooting(state, Date.now())) && (state.mounted.size > 0 || moving))) return cancel('frames')
 
     every('frames', Math.round(1000 / state.options.fps), frame)
   }
@@ -302,6 +310,16 @@ export function createController(state: State, host: Host): Controller {
   function start(): void {
     let lastIdleMs = 0
 
+    // The AI terminal's saved model and budget apply from the first turn, not only once Settings was opened.
+    void loadAiPrefs(state, host)
+    void loadAllowed(state, host)
+    void loadLedger(state, host)
+    void host.storeGet(NAV_KEY).then(saved => {
+      const style = NAV_STYLES.find(candidate => candidate === saved)
+
+      if (style !== undefined) state.nav = style
+    }, () => undefined)
+
     every('refresh', state.options.refreshSeconds * 1000, () => {
       const now = Date.now()
       const isSeen = state.pane.isOpen || now - state.barDrawnAtMs < BAR_FRESH_MS
@@ -309,7 +327,11 @@ export function createController(state: State, host: Host): Controller {
       // Nothing on screen reads the disk: re-read only on the idle cadence, so a closed console costs nearly nothing.
       if (isSeen || now - lastIdleMs >= IDLE_REFRESH_MS) {
         lastIdleMs = now
-        void refresh().then(() => probe())
+        void refresh().then(() => {
+          void probe()
+          void refreshWorkflows(state, host)
+          advance(state, host)
+        })
       }
     })
     every('activity', ACTIVITY_BUCKET_MS, () => {
@@ -328,7 +350,7 @@ export function createController(state: State, host: Host): Controller {
   /** `closeOnEscape` false: take the keys but leave Esc handing them back, as an auto-opened pane does. */
   async function open(focus = true, closeOnEscape = focus): Promise<{ isPlaced: boolean; reason: string }> {
     try {
-      const result = await host.openPane({ id: PANE_ID, title: 'ruflo', rows: rowsOf(state.view), ...(focus && { focus: true, holdToasts: true }), ...(closeOnEscape && { closeOnEscape: true }) })
+      const result = await host.openPane({ id: PANE_ID, title: 'ruflo', rows: rowsOf(state.view), ...(state.dockColumns > 0 && { columns: state.dockColumns }), ...(focus && { focus: true, holdToasts: true }), ...(closeOnEscape && { closeOnEscape: true }) })
       const isPlaced = result === undefined || result.isPlaced !== false
 
       if (isPlaced && !state.pane.isOpen) state.pane.bootAtMs = Date.now()
@@ -384,12 +406,16 @@ export function createController(state: State, host: Host): Controller {
     if (view !== state.view) {
       if (view === 'agent' || state.view !== 'agent') state.back = state.view === 'agent' ? state.back : state.view
       state.view = view
+      // A group picked on one page (the menu's pages row) does not follow you to the next, or back to this one.
+      state.navPick = null
+      state.pane.viewAtMs = Date.now()
       state.select.item = 0
       state.mounted.clear()
       persist()
       // A new view asks for its own height inline; the dock ignores it.
-      if (state.pane.isOpen) void host.openPane({ id: PANE_ID, title: 'ruflo', rows: rowsOf(view) }).catch(() => undefined)
+      if (state.pane.isOpen) void host.openPane({ id: PANE_ID, title: 'ruflo', rows: rowsOf(view), ...(state.dockColumns > 0 && { columns: state.dockColumns }) }).catch(() => undefined)
       void probe(true)
+      host.scrollTop()
     }
 
     host.invalidate()
@@ -400,6 +426,7 @@ export function createController(state: State, host: Host): Controller {
       void listSkills(state, host)
       focusField('skills-search')
     }
+    openLoaders(state, host, view)
   }
 
   /**
@@ -424,15 +451,7 @@ export function createController(state: State, host: Host): Controller {
 
     const spec = agent === undefined ? null : agentLogs(agent)
 
-    if (spec !== null) {
-      void host
-        .run([...CLI_PREFIXES[state.options.cli], ...spec.args], 30_000)
-        .then(result => {
-          if (state.drill.agentId === agentId) state.drill = { agentId, logs: result.stdout.split('\n').map(line => plain(line, 160)).filter(Boolean).slice(-12), logsAtMs: Date.now() }
-        })
-        .catch(() => undefined)
-        .finally(() => host.invalidate())
-    }
+    if (spec !== null) readDrillLogs(state, host, agentId, spec.args)
   }
 
   const runner = createRunner(state, host, {
@@ -441,7 +460,7 @@ export function createController(state: State, host: Host): Controller {
     drill,
     command: name => (name === 'refresh' ? actions.refresh() : name === 'help' ? actions.help() : actions.close()),
   })
-  const actions: Actions = actionsOf(state, host, runner, { freshRead, probe, setView, drill, close })
+  const actions: Actions = actionsOf(state, host, runner, { freshRead, probe, setView, drill, close, animate })
 
   function markFrame(requestId: string, isWorking: boolean): void {
     markRequest = requestId
@@ -464,7 +483,7 @@ export function createController(state: State, host: Host): Controller {
     push(list, { atMs: Date.now(), tool: plain(tool, 40) }, 200)
     state.toolsByAgent.set(who, list)
     if (state.toolsByAgent.size > 50) state.toolsByAgent.delete(state.toolsByAgent.keys().next().value as string)
-    record(state.events, [{ atMs: Date.now(), kind: 'tools', text: `${who === 'main' ? 'claude' : who}: ${plain(tool, 40)}` }])
+    record(state.events, [{ atMs: Date.now(), kind: 'tools', text: `${agentName(state, agentId)}: ${plain(tool, 40)}` }])
   }
 
   const closedByPerson = () => {

@@ -9,6 +9,7 @@
  * The person's text reaches an agent on stdin, never as an argument, so it cannot be read as a flag.
  */
 import type { ActionSpec } from './actions'
+import { ESCAPES, HIDDEN, INVISIBLE } from './data/parse'
 import type { Host } from './host'
 import { CLI_PREFIXES, PANE_ID, push, termStoreKeyOf, type AgentId, type HarnessId, type State, type TermLine } from './state'
 import { claudeParser, codexEvent, eventOf, type Sink } from './stream'
@@ -21,8 +22,8 @@ const MAX_PROMPT = 8_000
 export type Harness = { id: HarnessId; key: string; label: string; about: string; agents: readonly AgentId[] }
 
 export const HARNESSES: readonly Harness[] = [
+  { id: 'claude', key: 'l', label: 'claude', about: 'claude -p in plan mode, a per-turn budget cap (Settings), one session per project · billed to your Claude plan', agents: ['claude'] },
   { id: 'codex', key: 'c', label: 'codex', about: 'codex exec, read-only sandbox, one thread per project · billed to your OpenAI plan', agents: ['codex'] },
-  { id: 'claude', key: 'l', label: 'claude', about: 'claude -p in plan mode, at most $1 a turn, one session per project · billed to your Claude plan', agents: ['claude'] },
   { id: 'swarm', key: 'v', label: 'swarm', about: 'codex and claude together: one question to both, answering side by side in their own sessions', agents: ['codex', 'claude'] },
   { id: 'ruflo', key: 'u', label: 'ruflo', about: 'one ruflo CLI command, split on spaces with no shell (swarm status, memory search -q auth) · asked each time', agents: ['ruflo'] },
 ]
@@ -40,6 +41,8 @@ function uuid(): string {
 }
 
 /** The argv for one agent's next turn: a new session, or the saved one resumed. */
+import { settingsOf } from './settings'
+
 export function argvOf(state: State, agent: AgentId, text: string): readonly string[] | null {
   const session = agent === 'ruflo' ? undefined : state.terminal.sessions[agent]
 
@@ -49,7 +52,7 @@ export function argvOf(state: State, agent: AgentId, text: string): readonly str
         ? ['codex', 'exec', '--json', '--sandbox', 'read-only', '--skip-git-repo-check', '-']
         : ['codex', 'exec', 'resume', '--json', '--skip-git-repo-check', '-c', 'sandbox_mode="read-only"', session, '-']
     case 'claude':
-      return ['claude', '-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--permission-mode', 'plan', '--max-budget-usd', '1', ...(session === undefined ? [] : ['--resume', session])]
+      return ['claude', '-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--permission-mode', 'plan', '--max-budget-usd', String(settingsOf(state).ai.budgetUsd), ...(settingsOf(state).ai.claudeModel === 'default' ? [] : ['--model', settingsOf(state).ai.claudeModel]), ...(session === undefined ? [] : ['--resume', session])]
     case 'ruflo': {
       const words = text.split(/\s+/).filter(word => word !== '')
 
@@ -63,11 +66,8 @@ export function argvOf(state: State, agent: AgentId, text: string): readonly str
  * gone, tabs as two spaces, indentation kept. `trim` false keeps a trailing space (a token typed mid-sentence).
  */
 export function termText(line: string, max = 400, trim = true): string {
-  const cleaned = line
-    .replace(/\u001b\][^\u0007\u001b]*(\u0007|\u001b\\)/g, '')
-    .replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '')
-    .replace(/\t/g, '  ')
-    .replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩]/g, '')
+  // The same strip set as plain() (data/parse.ts), so a character one drops cannot get through the other (#3816).
+  const cleaned = line.replace(/\t/g, '  ').replace(ESCAPES, '').replace(INVISIBLE, '').replace(HIDDEN, '')
   const out = trim ? cleaned.trimEnd() : cleaned
 
   return out.length <= max ? out : `${out.slice(0, max - 1)}…`
@@ -107,6 +107,9 @@ export function whyNotRun(state: State, text: string): string | null {
 
   return null
 }
+
+/** True when the person said "always accept" in Settings and the harness is an AI one (a ruflo command always asks). */
+export const isAutoAccept = (state: State): boolean => settingsOf(state).ai.autoAccept && harnessOf(state.terminal.harness).id !== 'ruflo'
 
 /** True when the text can go straight to the agents: every one of them has a session the person said yes to. */
 export const isLive = (state: State): boolean => {
@@ -211,7 +214,10 @@ async function runAgent(state: State, host: Host, agent: AgentId, prompt: string
     },
     done: ({ costUsd, tokens, isError, message }) => {
       if (agent === 'codex' || agent === 'claude') term.turns[agent] += 1
-      if (costUsd !== undefined) term.costUsd += costUsd
+      if (costUsd !== undefined) {
+        term.costUsd += costUsd
+        term.costReports += 1
+      }
       ended = isError === true ? `✗ ${message ?? 'failed'}` : `✓ ${secs()}${costUsd !== undefined ? ` · $${costUsd.toFixed(3)}` : ''}${tokens !== undefined ? ` · ${tokens.toLocaleString('en-US')} tokens` : ''}`
     },
   }
