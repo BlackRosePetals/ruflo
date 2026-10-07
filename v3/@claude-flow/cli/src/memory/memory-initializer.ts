@@ -9,6 +9,7 @@
  * @module v3/cli/memory-initializer
  */
 
+import { loadBetterSqlite3 } from './shared-sqlite.js';
 import { liveMemoryRowSql } from './live-memory-row.js';
 import { encodeEmbeddingQ8, MAX_LIST_EMBEDDINGS, type EmbeddingQ8 } from './embedding-q8.js';
 import * as fs from 'fs';
@@ -1606,8 +1607,8 @@ export async function recoverMemoryDatabase(
   try {
     // Module name behind a variable so TS does not statically resolve the
     // optional native dep's types at build time (CI may not install them).
-    const mod: string = 'better-sqlite3';
-    Database = (await import(mod)).default;
+    // #3693: same better-sqlite3 identity as AgentDB (see shared-sqlite.ts).
+    Database = await loadBetterSqlite3();
   } catch {
     return await restoreFromBackup('no-native');
   }
@@ -1723,8 +1724,8 @@ export async function repairVectorIndexes(
   try {
     // Module name behind a variable so TS does not statically resolve the
     // optional native dep's types at build time (CI may not install them).
-    const mod: string = 'better-sqlite3';
-    Database = (await import(mod)).default;
+    // #3693: same better-sqlite3 identity as AgentDB (see shared-sqlite.ts).
+    Database = await loadBetterSqlite3();
   } catch {
     // Native module absent (e.g. WASM-only host). Statusline fix still covers
     // the display; nothing to repair here.
