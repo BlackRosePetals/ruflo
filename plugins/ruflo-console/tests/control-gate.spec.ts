@@ -145,11 +145,16 @@ describe('an ask that resolves late keeps its origin and never replaces a waitin
     expect(world.state.pending).toBe(mine)
     expect(world.state.pending?.label).toBe('store my note')
     expect(world.seen.prompts).toEqual([])
+    // Claude's attempt is on the record (the Room feed and console_state show the control log), as a refusal.
+    expect(world.state.control.log.some(entry => entry.outcome === 'denied' && /waiting/.test(entry.summary))).toBe(true)
   })
 
 })
 
 /** Local reads whose WORDS sound like an action (doctor, deploy status, installed, join, cleanup dry run): each is a curated read (a Dev Tools `cost: read`, a local list), so it stays instant for Claude. */
+// mh-doctor, doc-npm: `doctor --component …` local checks. x-channels: lists the channel keys held on this machine. x-bbs-peers, x-bbs-watch: read the local
+// agentbbs peers.json and envelope log (federation_bbs_peers / federation_bbs_watch, v3/@claude-flow/cli/src/mcp-tools/agentbbs-tools.ts), never the relay.
+// vec-edge-join: prints how to join. mem-cleanup-plan, dt-cleanup: a dry run. dt-deploy-*, dt-plug-installed, dt-update-history, dt-migrate-*: Dev Tools entries with `cost: read`.
 const LOCAL_READS = new Set(['mh-doctor', 'x-channels', 'x-bbs-peers', 'x-bbs-watch', 'mem-cleanup-plan', 'doc-npm', 'vec-edge-join', 'dt-deploy-status', 'dt-deploy-history', 'dt-plug-installed', 'dt-cleanup', 'dt-update-history', 'dt-migrate-status', 'dt-migrate-breaking'])
 
 describe('no palette entry flagged read-only hides that it acts (#3815 audit)', () => {

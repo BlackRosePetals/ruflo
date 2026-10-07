@@ -244,7 +244,11 @@ async function settlePending(deps: ModelToolDeps, tool: string, id: string, aske
   if (pending === null) return null
 
   // A card the person raised while this call ran is theirs: it is never cancelled, confirmed or taken over here (ADR-450 T17).
-  if (pending.source === 'you') return { status: 'refused', text: `an action is waiting for the person ("${plain(pending.label, 80)}"), so yours was not queued. Do not run another until they answer. Nothing ran.` }
+  if (pending.source === 'you') {
+    say(state, tool, `${id}: the person's card is waiting`, 'denied', pending.label)
+
+    return { status: 'refused', text: `an action is waiting for the person ("${plain(pending.label, 80)}"), so yours was not queued. Do not run another until they answer. Nothing ran.` }
+  }
 
   const kind = classOf(pending)
 
@@ -347,7 +351,7 @@ export async function callTool(name: string, input: Record<string, unknown>, dep
       if (chip !== '' && (view.id !== 'settings' || picked === undefined)) return refuse(`open ${view.id} chip`, view.id !== 'settings' ? 'chip applies only to the settings page.' : `no such chip "${plain(chip, 40)}". Chips: ${[...chips.keys()].join(', ')}`)
 
       asModel(state, () => control.setView(view.id as ViewId))
-      await asModel(state, () => control.open(false))
+      await control.open(false)
       if (picked !== undefined) asModel(state, () => control.actions.settings.plugin(picked))
       say(state, name, `open ${view.id}${picked === undefined ? '' : ` ${chip}`}`, 'ok')
 
