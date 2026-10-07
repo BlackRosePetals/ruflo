@@ -264,18 +264,22 @@ export function section(ctx: Ctx, id: string, title: string, right: string, chil
 export function rule(ctx: Ctx, title: string, right = ''): RenderElement {
   if (look === 'bbs') {
     // BBS section header: ▓▒░ SWARM ░▒▓══════════ right
-    const head = `▓▒░ ${title.toUpperCase()} ░▒▓`
-    const fill = Math.max(1, ctx.columns - head.length - right.length - 2)
+    const head = `▓▒░ ${clip(title, Math.max(4, ctx.columns - 12)).toUpperCase()} ░▒▓`
+    const room = Math.max(0, ctx.columns - head.length - 3)
+    const tail = clip(right, room)
+    const fill = Math.max(1, ctx.columns - head.length - tail.length - 2)
 
-    const line = row(ctx, [ctx.kit.Text({ bold: true, color: accentOf(ctx), children: head }), ctx.kit.Text({ color: accentOf(ctx), dimColor: true, children: `${'═'.repeat(fill)} ` }), ctx.kit.Text({ color: accentOf(ctx), children: right })])
+    const line = row(ctx, [ctx.kit.Text({ bold: true, color: accentOf(ctx), wrap: 'truncate-end', children: head }), ctx.kit.Text({ color: accentOf(ctx), dimColor: true, children: `${'═'.repeat(fill)} ` }), ctx.kit.Text({ color: accentOf(ctx), wrap: 'truncate-end', children: tail })])
 
     // In a card the header is the card's first row; otherwise a blank line above each section, so the board breathes instead of packing every block together.
     return ctx.cards === true ? marked(HEADS, line) : marked(HEADS, col(ctx, [ctx.kit.Text({ children: ' ' }), line]))
   }
 
-  const fill = Math.max(1, ctx.columns - title.length - right.length - 3)
+  const name = clip(title, Math.max(4, ctx.columns - 4))
+  const tail = clip(right, Math.max(0, ctx.columns - name.length - 4))
+  const fill = Math.max(1, ctx.columns - name.length - tail.length - 3)
 
-  return marked(HEADS, row(ctx, [ctx.kit.Text({ bold: true, color: THEME.head, children: title }), ctx.kit.Text({ dimColor: true, children: ` ${'─'.repeat(fill)} ` }), ctx.kit.Text({ dimColor: true, children: right })]))
+  return marked(HEADS, row(ctx, [ctx.kit.Text({ bold: true, color: THEME.head, wrap: 'truncate-end', children: name }), ctx.kit.Text({ dimColor: true, children: ` ${'─'.repeat(fill)} ` }), ctx.kit.Text({ dimColor: true, wrap: 'truncate-end', children: tail })]))
 }
 
 /** A label and its value; the value dims when it is n/a. */

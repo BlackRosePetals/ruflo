@@ -91,6 +91,22 @@ export function nextTask(mission: MissionRecord, tasks: readonly TaskRecord[]): 
   return mission.tasks.find(task => status.get(task.id) === 'ready' && task.rufloTaskId !== undefined) ?? null
 }
 
+/**
+ * Autopilot's narrow door (ADR-470 §2.2): the mission's own rule for handing a task over, with the one-at-a-time limit widened to `cap`.
+ * Everything else is `nextTask`'s: not paused or cancelled, nothing failed, the task ready (its dependencies done) and in the task store.
+ * `running` counts tasks the store shows in progress plus tasks handed over in the last seconds (the store has not refreshed yet).
+ * `startable(m, tasks, t, 1)` is exactly `nextTask(m, tasks)?.id === t.id` as far as the running rule goes.
+ */
+export function startable(mission: MissionRecord, tasks: readonly TaskRecord[], task: LedgerTask, cap: number): boolean {
+  if (mission.paused || mission.cancelled || task.rufloTaskId === undefined || isInflight(task)) return false
+
+  const status = derive(mission, tasks)
+  const values = [...status.values()]
+  const running = mission.tasks.filter(candidate => status.get(candidate.id) === 'running' || (candidate !== task && isInflight(candidate))).length
+
+  return !values.includes('failed') && status.get(task.id) === 'ready' && running < Math.max(1, cap)
+}
+
 export const progressOf = (mission: MissionRecord, tasks: readonly TaskRecord[]) => {
   const status = derive(mission, tasks)
 

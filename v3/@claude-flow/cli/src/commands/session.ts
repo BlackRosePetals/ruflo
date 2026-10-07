@@ -10,6 +10,7 @@ import { callMCPTool, MCPClientError } from '../mcp-client.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { stringify as stringifyYaml } from 'yaml';
+import { gzipSync, gunzipSync } from 'node:zlib';
 
 // Format date for display
 function formatDate(dateStr: string): string {
@@ -689,7 +690,8 @@ const exportCommand: Command = {
         ? outputPath
         : path.join(ctx.cwd, outputPath);
 
-      fs.writeFileSync(absolutePath, content, 'utf-8');
+      const bytes = compress ? gzipSync(content) : Buffer.from(content, 'utf-8');
+      fs.writeFileSync(absolutePath, bytes);
 
       spinner.succeed('Session exported');
       output.writeln();
@@ -708,7 +710,7 @@ const exportCommand: Command = {
           { property: 'Agents', value: exportStats.agentCount ?? exportStats.agents ?? 0 },
           { property: 'Tasks', value: exportStats.taskCount ?? exportStats.tasks ?? 0 },
           { property: 'Memory Entries', value: exportStats.memoryEntries ?? 0 },
-          { property: 'File Size', value: formatSize(content.length) }
+          { property: 'File Size', value: formatSize(bytes.length) }
         ]
       });
 
@@ -717,7 +719,7 @@ const exportCommand: Command = {
 
       return {
         success: true,
-        data: { sessionId, outputPath, format: exportFormat, size: content.length }
+        data: { sessionId, outputPath, format: exportFormat, size: bytes.length }
       };
     } catch (error) {
       spinner.fail('Failed to export session');
@@ -774,9 +776,11 @@ const importCommand: Command = {
     try {
       // The YAML written by `session export --format yaml` is display-only;
       // there is no YAML parser here, so say so instead of failing obscurely.
-      if (absolutePath.endsWith('.yaml') || absolutePath.endsWith('.yml')) {
+      if (/\.ya?ml(?:\.gz)?$/i.test(absolutePath)) {
         try {
-          JSON.parse(fs.readFileSync(absolutePath, 'utf-8'));
+          const bytes = fs.readFileSync(absolutePath);
+          const content = bytes[0] === 0x1f && bytes[1] === 0x8b ? gunzipSync(bytes) : bytes;
+          JSON.parse(content.toString('utf-8'));
         } catch {
           spinner.fail('Failed to import session');
           output.printError('YAML session import is not supported. Export with --format json and import that file.');

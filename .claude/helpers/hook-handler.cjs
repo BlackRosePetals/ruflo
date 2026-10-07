@@ -379,14 +379,33 @@ async function main() {
 const handlers = {
   'route': () => {
     // Inject ranked intelligence context before routing
-    if (intelligence && intelligence.getContext) {
+    // ADR-472: keep the detailed recall so ONE bounded log record (ids, scores, router pick; never the prompt) is appended after routing.
+    let recall = null;
+    if (intelligence && (intelligence.getContextDetailed || intelligence.getContext)) {
       try {
-        const ctx = intelligence.getContext(prompt);
-        if (ctx) console.log(ctx);
+        if (intelligence.getContextDetailed) {
+          recall = intelligence.getContextDetailed(prompt);
+          if (recall && recall.text) console.log(recall.text);
+        } else {
+          const ctx = intelligence.getContext(prompt);
+          if (ctx) console.log(ctx);
+        }
       } catch (e) { /* non-fatal */ }
     }
+    const logRecall = (result) => {
+      try {
+        if (recall && intelligence.appendRecall) {
+          intelligence.appendRecall(recall, {
+            sessionId: hookInput.session_id || hookInput.sessionId || null,
+            agent: result && result.agent,
+            confidence: result && result.confidence,
+          });
+        }
+      } catch (e) { /* non-fatal: the log never blocks a prompt */ }
+    };
     if (router && router.routeTask) {
       const result = router.routeTask(prompt);
+      logRecall(result);
       // Format output for Claude Code hook consumption — real data only
       const row = (text) => `| ${text.substring(0, 60).padEnd(60)} |`;
       const output = [
@@ -400,6 +419,7 @@ const handlers = {
       ];
       console.log(output.join('\n'));
     } else {
+      logRecall(null);
       console.log('[INFO] Router not available, using default routing');
     }
 

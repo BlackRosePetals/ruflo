@@ -18,6 +18,7 @@
  */
 
 import { liveMemoryRowSql } from './live-memory-row.js';
+import { encodeEmbeddingQ8, MAX_LIST_EMBEDDINGS } from './embedding-q8.js';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { realpathSync } from 'node:fs';
@@ -1495,6 +1496,8 @@ export async function bridgeListEntries(options: {
   includeContent?: boolean;
   /** ADR-323: restrict rows to these provenance types. */
   provenanceFilter?: string[];
+  /** ADR-472: include each entry's embedding as int8+scale (`embeddingQ8`); at most MAX_LIST_EMBEDDINGS rows. */
+  includeEmbedding?: boolean;
 }): Promise<{
   success: boolean;
   entries: {
@@ -1509,6 +1512,7 @@ export async function bridgeListEntries(options: {
     /** #2073: Present when `includeContent: true` was requested. */
     content?: string;
     provenanceType?: string;
+    embeddingQ8?: { dims: number; scale: number; b64: string };
   }[];
   total: number;
   error?: string;
@@ -1568,7 +1572,7 @@ export async function bridgeListEntries(options: {
         ORDER BY updated_at DESC
         LIMIT ? OFFSET ?
       `);
-      const rows = stmt.all(...filterParams, limit, offset);
+      const rows = stmt.all(...filterParams, options.includeEmbedding ? Math.min(limit, MAX_LIST_EMBEDDINGS) : limit, offset);
       for (const row of rows) {
         const entry: Record<string, unknown> = {
           // #2073: don't truncate id when content is requested — callers
@@ -1585,6 +1589,10 @@ export async function bridgeListEntries(options: {
         };
         if (options.includeContent) {
           entry.content = row.content || '';
+        }
+        if (options.includeEmbedding) {
+          const q8 = encodeEmbeddingQ8(row.embedding);
+          if (q8) entry.embeddingQ8 = q8;
         }
         entries.push(entry);
       }
