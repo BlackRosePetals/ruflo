@@ -2,6 +2,28 @@
 
 <a href="https://cognitum.one/agentic-engineering"><img src="ruflo/assets/ruflo-neon-flicker.gif" alt="Ruflo animated neon sign" width="100%"></a>
 
+</div>
+
+## Start here
+
+**Try a plugin in Claude Code** for core tools without generating the full project scaffold. Run inside Claude Code:
+
+```text
+/plugin marketplace add ruvnet/ruflo
+/plugin install ruflo-core@ruflo
+```
+
+**Install the full CLI** for project setup, agents, memory, MCP and hooks. Run in your project terminal, then follow the wizard:
+
+```bash
+npx ruflo@latest init wizard
+```
+
+[Compare install paths](#quick-start) · [Open the console](#console-walkthrough) · [User guide](docs/USERGUIDE.md)
+
+<div align="center">
+
+
 <a href="https://ruos.cognitum.one"><img src="ruflo/assets/ruos-animated.svg" alt="ruOS — A desktop that runs itself" width="100%"></a>
 
 <!-- Try Ruflo — the 3 badges first-time visitors actually act on -->
@@ -68,11 +90,26 @@ User → Ruflo (CLI/MCP) → Router → Swarm → Agents → Memory → LLM prov
 
 <img src="docs/assets/readme/console-icon-inspect.svg" width="28" height="28" alt=""> **Inspect any run.** Open agent logs and results, search, triage failures, replay and compare. Start with `npx ruflo init`, restart Claude Code, then `/ruflo`. [Full console tour](docs/assets/ruflo-console-walkthrough-wide.gif).
 
-<img src="docs/assets/readme/console-icon-control.svg" width="28" height="28" alt=""> **Let Claude drive. You set the limits.** Enable **Settings → Claude control** to navigate and run console actions. Choose `read`, `write`, `manage` or `full`, with `ask` or `auto` approval. Control is **off by default**; actions above your permission level are refused. Review the live action log or press **Take back control** to stop Claude control. [Details](v3/docs/adr/ADR-444-claude-controls-the-console.md).
+<img src="docs/assets/readme/console-icon-control.svg" width="28" height="28" alt=""> **Let Claude drive. You set the limits.** Enable **Settings → Claude control** to navigate and run console actions. Choose `read`, `write`, `manage` or `full`, with `ask` or `auto` approval. The current default is **read + ask**; raising the level is your choice. Actions above your permission level are refused, and network, spending and destructive actions require confirmation even in `auto`. Review the live action log or press **Take back control** to stop Claude control. [Details](v3/docs/adr/ADR-444-claude-controls-the-console.md).
+
+<a id="console-walkthrough"></a>
+
+### One task: create a mission with Claude
+
+<img src="docs/assets/readme/console-icon-workflows.svg" width="28" height="28" alt=""> **Watch the recorded console session below.** Claude creates a mission, opens the Learning and Security pages, and reports its actions in Overview.
+
+1. **Set the boundary.** Install the console using the commands below, open `/ruflo`, then choose **Settings → Claude control → write + ask**.
+2. **Give a concrete request.** Try: “Create a mission to add a dark mode toggle. Show me the mission and its status.”
+3. **Approve creation.** Claude opens Missions and sets the goal. Confirm the pending create action in the console.
+4. **Verify the result.** Check that Missions contains the goal and Overview records the action. Creating a mission does not mean the feature has been implemented.
+5. **Keep control.** **Take back control** pauses Claude's console tools. A later call should be refused until you restore control.
+
+**What the recording demonstrates:** a real Claude Haiku session with `write + auto`, mission creation, page navigation, a refused swarm stop, and control being taken back. The steps above use `ask` so you approve creation yourself. The separate workflow animation uses sample data; neither is evidence of completed swarm work or memory recall.
+
+[Implementation and recorded test findings](v3/docs/adr/ADR-444-claude-controls-the-console.md) · [Reproduction script](plugins/ruflo-console/scripts/e2e-control.sh)
 
 <p align="center"><img src="docs/assets/ruflo-console-claude-control.gif" alt="Claude Code with the ruflo console beside it: Claude sets a mission goal, creates the mission and opens the Learning, Security and Overview pages through the console tools; the Claude control dashboard logs each action; swarm-stop is refused because it needs the full level; the person clicks Take back control and the next request is refused"></p>
 
-<sub>A real recording (Claude Haiku, a few cents): control set to <code>write</code> with auto-confirm. Setting a goal and creating the mission is within that level; stopping a swarm needs <code>full</code>, so it is refused; after <b>Take back control</b> every call is refused.</sub>
 
 **Install the mods from the ruflo marketplace** (Claude Code 2.1.287 or later; mods run with your account's permissions and are not sandboxed, so read the code first):
 
