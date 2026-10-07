@@ -52,6 +52,8 @@ MCP exposes Ruflo tools to your client. The console and mods above are Claude Co
 <div align="center">
 
 
+### Optional: ruOS Desktop
+
 <a href="https://ruos.cognitum.one"><img src="ruflo/assets/ruos-animated.svg" alt="ruOS — A desktop that runs itself" width="100%"></a>
 
 **Connect ruOS to ChatGPT or Claude via MCP:**
