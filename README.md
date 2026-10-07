@@ -38,7 +38,7 @@ A 14-chapter guide: from the basic idea to a first useful task, then memory, age
 
 One `npx ruflo init` gives Claude Code a nervous system: agents self-organize into swarms, learn from every task, remember across sessions, and — with federation — securely talk to agents on other machines without leaking data. You keep writing code. Ruflo handles the coordination.
 
-<p align="center"><img src="docs/assets/readme/architecture-flow.svg" width="100%" alt="User to Ruflo CLI/MCP, router, swarm, agents, memory and LLM providers, with memory feedback to routing."></p>
+<p align="center"><img src="docs/assets/readme/learning-architecture-slideshow.svg" width="100%" alt="Ruflo self learning architecture: six animated scenes show the full flow, recall, agent execution, outcome evaluation, retained memory and feedback into future routing."></p>
 
 <details>
 <summary>Architecture in text</summary>
