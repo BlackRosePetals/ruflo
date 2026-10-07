@@ -25,7 +25,7 @@ def path(ids):
  return s
 base_points=points[:]
 view_paths=[]
-view_names=['BRANCHING TRAJECTORIES','HYPERBOLIC POINCARE DISK','CONTRASTIVE CLUSTERS','GRADIENT VECTOR FIELD','NEAREST NEIGHBOR GRAPH','HELICAL MEMORY MANIFOLD','TOROIDAL FEEDBACK']
+view_names=['BRANCHING TRAJECTORIES','HYPERBOLIC POINCARE DISK','CONTRASTIVE CLUSTERS','GRADIENT VECTOR FIELD','4D TESSERACT','HYPERSPHERICAL TRAJECTORIES','4D CLIFFORD TORUS']
 def linepath(ids,pts):
  return 'M'+'L'.join(f'{pts[i][0]:.1f} {pts[i][1]:.1f}' for i in ids)
 def projected(x,y,z):
@@ -37,6 +37,50 @@ def geo(a,b):
  for j in range(13):
   v=w*j/12;z=(p+v)/(1+p.conjugate()*v);out.append((480+242*z.real,450+242*z.imag))
  return 'M'+'L'.join(f'{x:.1f} {y:.1f}' for x,y in out)
+def project4(v,t):
+ x,y,z,w=v
+ a=t*2*pi+.36;b=t*2*pi+.62
+ x,w=x*cos(a)-w*sin(a),x*sin(a)+w*cos(a)
+ y,z=y*cos(b)-z*sin(b),y*sin(b)+z*cos(b)
+ # Perspective projection from 4D to 3D, then 3D to screen.
+ q=3.6/(3.6-w);x,y,z=x*q,y*q,z*q
+ xx=x*.88+z*.47;zz=-x*.47+z*.88
+ yy=y*.9-zz*.43;zz=y*.43+zz*.9
+ q=5/(5-zz)
+ return 480+xx*q*112,450+yy*q*112
+
+def geometry4(kind):
+ from itertools import product
+ if kind==4:
+  vs=list(product([-1,1],repeat=4));es=[(a,b) for a in range(16) for b in range(a+1,16) if sum(vs[a][d]!=vs[b][d] for d in range(4))==1]
+  chain=[0,1,3,7,15,14,12,8,0]
+ elif kind==5:
+  vs=[];es=[]
+  for ring in range(9):
+   u=2*pi*ring/9
+   for j in range(24):
+    v=2*pi*j/24;vs.append((cos(u)*cos(v)*1.4,sin(u)*cos(v)*1.4,sin(v)*cos(2*u)*1.4,sin(v)*sin(2*u)*1.4))
+  es=[(r*24+j,r*24+(j+1)%24) for r in range(9) for j in range(24)]+[(r*24+j,((r+1)%9)*24+j) for r in range(9) for j in range(0,24,3)]
+  chain=list(range(24))+[0]
+ else:
+  vs=[(cos(2*pi*i/20),sin(2*pi*i/20),cos(2*pi*j/12),sin(2*pi*j/12)) for i in range(20) for j in range(12)]
+  es=[(i*12+j,((i+1)%20)*12+j) for i in range(20) for j in range(12)]+[(i*12+j,i*12+(j+1)%12) for i in range(20) for j in range(12)]
+  chain=[(i%20)*12+(i//2)%12 for i in range(40)]
+ return vs,es,chain
+
+def render4(kind):
+ vs,es,chain=geometry4(kind);frames=[[project4(tuple(c*.84 for c in v) if kind==4 else v,f/32) for v in vs] for f in range(33)]
+ ds=[''.join(linepath([a,b],frame) for a,b in es) for frame in frames]
+ out=f'<path d="{ds[0]}" fill="none" stroke="#91b9e6" stroke-width="{1.8 if kind==4 else .85}" opacity=".6"><animate class="motion" attributeName="d" values="'+ ';'.join(ds)+'" dur="16s" repeatCount="indefinite"/></path>'
+ route=[linepath(chain,frame) for frame in frames]
+ for width,opacity in [(10,.13),(3,1)]:
+  out+=f'<path d="{route[0]}" fill="none" stroke="url(#route)" stroke-width="{width}" opacity="{opacity}"><animate class="motion" attributeName="d" values="'+ ';'.join(route)+'" dur="16s" repeatCount="indefinite"/></path>'
+ for i in range(0,len(vs),1 if kind==4 else 4):
+  x,y=frames[0][i];out+=f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{4 if kind==4 else 2}" fill="{"#ffb37e" if i%3==0 else "#b8e6ff"}">'
+  for attr,idx in [('cx',0),('cy',1)]:out+=f'<animate class="motion" attributeName="{attr}" values="'+ ';'.join(f'{frame[i][idx]:.1f}' for frame in frames)+'" dur="16s" repeatCount="indefinite"/>'
+  out+='</circle>'
+ out+='<text x="45" y="690" fill="#718da8" font-size="17">4D → 3D → 2D PROJECTION</text>'
+ return out
 for camera in range(7):
  pts=[];edges=[];routes=[];extra='';hues=[]
  if camera==0:
@@ -97,6 +141,8 @@ for camera in range(7):
     b=2*pi*j/10;rad=205+65*cos(b);pts.append(projected(rad*cos(a),65*sin(b),rad*sin(a)))
   edges=[(i*10+j,((i+1)%40)*10+j) for i in range(40) for j in range(10)]+[(i*10+j,i*10+(j+1)%10) for i in range(40) for j in range(10)]
   routes=[linepath([((i%40)*10+(i//4+offset)%10) for i in range(61)],pts) for offset in [0,5]]
+ if camera>=4:
+  O.append(f'<g id="forest{camera}">'+render4(camera)+'</g>');view_paths.append([]);continue
  O.append(f'<g id="forest{camera}">')
  O.append(extra)
  for a,b in edges:
@@ -130,4 +176,4 @@ for k,(label,title,l1,l2) in enumerate(S):
  O.append(f'<rect x="32" y="744" width="896" height="114" rx="16" fill="#09111c" stroke="#293c50"/><text x="480" y="788" text-anchor="middle" fill="#edf4fd" font-size="27">{escape(l1)}</text><text x="480" y="829" text-anchor="middle" fill="#a9bfd2" font-size="25">{escape(l2)}</text>')
  for j in range(7):O.append(f'<rect x="{347+j*39}" y="875" width="28" height="4" rx="2" fill="{"#ff9e64" if j==k else "#2b3e51"}"/>')
  O.append('</g>')
-O.append('</svg>');svg=''.join(O);ET.fromstring(svg);(P/'learning-vector-geometries.svg').write_text(svg);print(len(points),'nodes;',len(svg),'bytes; XML valid')
+O.append('</svg>');svg=''.join(O);ET.fromstring(svg);(P/'learning-hyperdimensions.svg').write_text(svg);print(len(points),'nodes;',len(svg),'bytes; XML valid')
