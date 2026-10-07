@@ -18,6 +18,7 @@
  */
 
 import { liveMemoryRowSql } from './live-memory-row.js';
+import { resolveAgentdbBetterSqlite3 } from './shared-sqlite.js';
 import { encodeEmbeddingQ8, MAX_LIST_EMBEDDINGS } from './embedding-q8.js';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -432,7 +433,8 @@ async function getRegistry(dbPath?: string): Promise<any | null> {
                   try {
                     const attestationFile = path.join(adbDir, 'dist/src/security/AttestationLog.js');
                     if (fs.existsSync(attestationFile)) {
-                      const Database = (cjsRequire('better-sqlite3') as unknown) as new (p: string) => unknown;
+                      // #3693: same better-sqlite3 copy AgentDB uses, so closing this handle cannot disturb its WAL.
+                      const Database = ((resolveAgentdbBetterSqlite3() ?? cjsRequire('better-sqlite3')) as unknown) as new (p: string) => unknown;
                       const swarmDir = path.resolve(process.cwd(), '.swarm');
                       if (!fs.existsSync(swarmDir)) fs.mkdirSync(swarmDir, { recursive: true });
                       const dbPath = path.join(swarmDir, 'attestation.db');
@@ -2303,7 +2305,7 @@ export async function bridgeStorePattern(options: {
   confidence: number;
   metadata?: Record<string, unknown>;
   dbPath?: string;
-}): Promise<{ success: boolean; patternId: string; controller: string; hasEmbedding?: boolean; embeddingError?: string } | null> {
+}): Promise<{ success: boolean; patternId: string; controller: string; hasEmbedding?: boolean; embeddingError?: string; error?: string } | null> {
   if (!operationContext.getStore()?.active) return withBridgeOperation(() => bridgeStorePattern(options));
   const registry = await getRegistry(options.dbPath);
   if (!registry) return null;
@@ -2353,6 +2355,18 @@ export async function bridgeStorePattern(options: {
     });
 
     if (!result) return null;
+
+    // #3691: bridgeStoreEntry reports data-level failures (MutationGuard
+    // rejection, nothing written) as a truthy {success:false}. Do not turn
+    // that into a success receipt — refuse at this boundary.
+    if (!result.success) {
+      return {
+        success: false,
+        patternId: '',
+        controller: 'bridge-fallback',
+        error: result.error ?? 'pattern write was not persisted',
+      };
+    }
 
     // Add to HNSW index for fast semantic search (bridgeStoreEntry stores SQL only)
     if (result.rawEmbedding) {
