@@ -52,6 +52,8 @@ User --> Ruflo (CLI/MCP) --> Router --> Swarm --> Agents --> Memory --> LLM Prov
 
 ---
 
+<p align="center"><img src="docs/assets/readme/console.svg" alt="Mission control: inspect agent work" width="100%"></p>
+
 <p align="center"><img src="docs/assets/ruflo-console-workflows.svg" width="952" height="964" alt="An animated recording of the ruflo console inside Claude Code: the boot (the neon sign and every area checked), then the Workflows page on a sample run: phases and agents with model, tokens and time; drilling from a run into one agent's activity, log and result; search; failure triage; cost; replay and compare; the control tab with a confirm card; and the mission autopilot panel"></p>
 
 <sub>The <code>/ruflo</code> console running in Claude Code (the cockpit docked beside Claude, cropped to the cockpit so it reads on a phone as well as a desktop): the boot, where every area is really checked, then the <b>Workflows</b> page on a <i>sample</i> run (sample data in the real file formats, not a real session): phases and agents with their model, tokens and time, a drill-down from a run to one agent's activity, log and result, cross-level search, failure triage, cost per run, replay and compare, a control tab whose Stop and Message actions ask first, and the mission autopilot panel with its envelope and kill switch. It is an animated SVG, so it stays sharp at any width. An earlier <a href="docs/assets/ruflo-console-walkthrough-wide.gif">wide-display tour of twenty-odd console pages</a> is still available. <code>npx ruflo init</code>, restart Claude Code, then <code>/ruflo</code>.</sub>
@@ -74,6 +76,8 @@ User --> Ruflo (CLI/MCP) --> Router --> Swarm --> Agents --> Memory --> LLM Prov
 `ruflo-console` is the cockpit above, `ruflo-mods` routes prompts and enforces policy in-process, `ruflo-swarm` shows the swarm in a pane, and `ruflo-ruos` adds the ruOS status segment. Open `/plugin` to confirm they appear in the active mods line. Inside the console, `/ruflo market` is the Plugin Catalog: every ruflo plugin, mod and skill with what it ships, and buttons to install, enable, disable and update (each asks first).
 
 ## Quick Start
+
+<p align="center"><img src="docs/assets/readme/quick-start.svg" alt="Start building with Ruflo" width="100%"></p>
 
 There are **two different install paths** with very different surface areas. Pick based on what you need (#1744):
 
@@ -220,6 +224,14 @@ claude mcp add claude-flow -- npx ruflo@latest mcp start
 
 ## What You Get
 
+<p align="center"><img src="docs/assets/readme/capabilities.svg" alt="Your agent toolkit" width="100%"></p>
+
+<table>
+<tr><td width="50%"><a href="plugins/ruflo-swarm/README.md"><img src="docs/assets/readme/card-swarm.svg" width="100%" alt="Agent teams"></a></td><td width="50%"><a href="plugins/ruflo-rag-memory/README.md"><img src="docs/assets/readme/card-memory.svg" width="100%" alt="Persistent memory"></a></td></tr>
+<tr><td width="50%"><a href="plugins/ruflo-intelligence/README.md"><img src="docs/assets/readme/card-learning.svg" width="100%" alt="Learning loops"></a></td><td width="50%"><a href="plugins/ruflo-security-audit/README.md"><img src="docs/assets/readme/card-security.svg" width="100%" alt="Security controls"></a></td></tr>
+<tr><td width="50%"><a href="https://ruvnet.github.io/ruflo"><img src="docs/assets/readme/card-plugins.svg" width="100%" alt="Plugin marketplace"></a></td><td width="50%"><a href="plugins/ruflo-ruvllm/README.md"><img src="docs/assets/readme/card-routing.svg" width="100%" alt="Models and routing"></a></td></tr>
+</table>
+
 | Capability | Description |
 |------------|-------------|
 | 🤖 **100+ Agents** | Specialized agents for coding, testing, security, docs, architecture |
@@ -235,6 +247,8 @@ claude mcp add claude-flow -- npx ruflo@latest mcp start
 | 🔬 **[MetaHarness](docs/metaharness-user-guide.md)** | Audit your AI agent setup before you ship. Grade readiness (1-100), scan tool configs for security issues, snapshot the whole project to catch regressions over time, and find templates that match your repo. `ruflo eject` turns a ruflo project into a standalone agent toolkit with its own name. [Full guide](docs/metaharness-user-guide.md). |
 
 ### Agent Federation — Slack for Agents
+
+<p align="center"><img src="docs/assets/readme/federation.svg" alt="Connected intelligence across machines" width="100%"></p>
 
 ```
 Your Agent --> [ Remove secrets ] --> [ Sign message ] --> [ Encrypted channel ]
@@ -350,6 +364,8 @@ User --> Claude Code / CLI
 
 ## Documentation
 
+<p align="center"><img src="docs/assets/readme/documentation.svg" alt="Guides, architecture and verification" width="100%"></p>
+
 Four docs for four audiences:
 
 | Doc | When to read it |
@@ -380,6 +396,8 @@ User Guide section index:
 
 ## Support
 
+<p align="center"><img src="docs/assets/readme/support.svg" alt="Build with the Ruflo community" width="100%"></p>
+
 | Resource | Link |
 |----------|------|
 | Documentation | [User Guide](docs/USERGUIDE.md) |
@@ -387,6 +405,8 @@ User Guide section index:
 | Enterprise | [ruv.io](https://ruv.io) |
 | Community | [Agentics Foundation Discord](https://discord.com/invite/dfxmpwkG2D) |
 | Powered by | [Cognitum.one](https://cognitum.one) |
+
+<p align="center"><img src="docs/assets/readme/signal-divider.svg" alt="Ruflo" width="100%"></p>
 
 ## License
 

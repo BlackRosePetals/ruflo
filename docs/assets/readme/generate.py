@@ -1,0 +1,29 @@
+"""Generate the README's self-contained vector illustrations. Run with Python 3."""
+from pathlib import Path
+from html import escape as e
+P=Path(__file__).parent
+CSS='''text{font-family:Arial,Helvetica,sans-serif}.mono{font-family:monospace}.flow{stroke-dasharray:8 18;animation:flow 8s linear infinite}.orbit{transform-box:fill-box;transform-origin:center;animation:spin 28s linear infinite}.pulse{animation:pulse 5s ease-in-out infinite}.rise{animation:rise 7s ease-in-out infinite}@keyframes flow{to{stroke-dashoffset:-208}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}@keyframes rise{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media(prefers-reduced-motion:reduce){*{animation:none!important}}'''
+def svg(name,w,h,title,body):
+ s=f'''<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-labelledby="title desc"><title id="title">{e(title)}</title><desc id="desc">Illustrative Ruflo artwork. Motion is decorative; no live metrics. Supports reduced motion.</desc><defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#10192c"/><stop offset="1" stop-color="#080b16"/></linearGradient><linearGradient id="neon"><stop stop-color="#3ae8ed"/><stop offset=".55" stop-color="#a88cff"/><stop offset="1" stop-color="#ff58bc"/></linearGradient><pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#7f9cce" stroke-opacity=".07"/></pattern></defs><style>{CSS}</style><rect x="1" y="1" width="{w-2}" height="{h-2}" rx="18" fill="url(#bg)" stroke="#26364e"/><rect width="{w}" height="{h}" rx="18" fill="url(#grid)"/>{body}</svg>'''
+ (P/(name+'.svg')).write_text(s)
+def icon(kind,x,y):
+ shapes={
+ 'swarm':'<path d="M0 0L-30 -22M0 0L30 -22M0 0L-30 24M0 0L30 24"/><circle r="10"/><circle cx="-30" cy="-22" r="6"/><circle cx="30" cy="-22" r="6"/><circle cx="-30" cy="24" r="6"/><circle cx="30" cy="24" r="6"/>',
+ 'memory':'<ellipse cy="-22" rx="28" ry="10"/><path d="M-28 -22V22C-28 36 28 36 28 22V-22M-28 0C-28 14 28 14 28 0"/><path class="flow" d="M-40 0H-29M29 0H45"/>',
+ 'learn':'<path d="M-24 15A28 28 0 1 1 25 13M25 13V-1M25 13H11"/><path d="M-17 8L-5 -6L7 3L18 -14"/><circle cx="-17" cy="8" r="3"/>',
+ 'shield':'<path d="M0 -32L28 -20V0Q27 22 0 36Q-27 22 -28 0V-20Z"/><path d="M-13 0L-3 10L16 -12"/>',
+ 'terminal':'<rect x="-34" y="-26" width="68" height="52" rx="6"/><path d="M-22 -9L-11 0L-22 9M-3 12H18"/><path d="M-34 -15H34"/>',
+ 'plugins':'<path d="M-26 -26H-7C-15 -44 15 -44 7 -26H26V-7C44 -15 44 15 26 7V26H7C15 8 -15 8 -7 26H-26Z"/>',
+ 'federation':'<circle r="30"/><ellipse rx="13" ry="30"/><path d="M-30 0H30M-25 -16H25M-25 16H25"/>',
+ 'book':'<path d="M0 -22Q-18 -32 -32 -23V26Q-18 16 0 26Q18 16 32 26V-23Q18 -32 0 -22V26"/>',
+ }
+ return f'<g transform="translate({x} {y})"><circle class="pulse" r="49" fill="#36e5e9" fill-opacity=".045"/><g fill="none" stroke="#51e7ed" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">{shapes[kind]}</g><circle class="orbit" r="43" fill="none" stroke="#ff67be" stroke-width="1.5" stroke-dasharray="26 109" opacity=".7"/></g>'
+headers=[('console','MISSION CONTROL','See the work. Inspect the decisions. Stay in control.','terminal'),('quick-start','START BUILDING','Choose your install path. Give your agents a harness.','terminal'),('capabilities','YOUR AGENT TOOLKIT','Coordinate teams. Recall context. Verify the work.','swarm'),('federation','CONNECTED INTELLIGENCE','Identity, trust and shared work across machines.','federation'),('documentation','GO DEEPER','Guides, architecture, benchmarks and verification.','book'),('support','BUILD WITH THE COMMUNITY','Find answers. Share ideas. Move the ecosystem forward.','swarm')]
+for i,(name,title,sub,kind) in enumerate(headers):
+ body=f'<path d="M24 130H936" stroke="url(#neon)" stroke-opacity=".25"/><path class="flow" d="M24 130H936" stroke="url(#neon)"/><text x="30" y="33" fill="#73a1ba" font-size="11" letter-spacing="3">RUFLO / {i+1:02d}</text><text x="30" y="76" fill="#f1f6ff" font-size="30" font-weight="700" letter-spacing="1">{e(title)}</text><text x="31" y="105" fill="#aabbd2" font-size="16">{e(sub)}</text>{icon(kind,850,68)}<path d="M735 28H774M735 34H760M916 103H933" stroke="#bb70ed" opacity=".4"/>'
+ svg(name,960,148,title,body)
+cards=[('swarm','Agent teams','Coordinate specialized agents.','Share tasks and context.','swarm'),('memory','Persistent memory','Retrieve useful context.','Carry knowledge across sessions.','memory'),('learning','Learning loops','Capture successful patterns.','Use feedback on future tasks.','learn'),('security','Security controls','Inspect inputs and tool access.','Keep decisions auditable.','shield'),('plugins','Extend your workspace','Add plugins, skills and tools.','Build the setup your team needs.','plugins'),('routing','Models and routing','Connect model providers.','Route work through your harness.','terminal')]
+for i,(name,title,a,b,kind) in enumerate(cards):
+ body=icon(kind,64,66)+f'<text x="126" y="45" fill="#78a0bb" font-size="10" letter-spacing="2">RUFLO / CAPABILITY</text><text x="126" y="78" fill="#f0f5ff" font-size="23" font-weight="700">{title}</text><text x="27" y="145" fill="#b2c4d9" font-size="17">{a}</text><text x="27" y="171" fill="#b2c4d9" font-size="17">{b}</text><path d="M27 207H421" stroke="#22364e"/><path class="flow" d="M27 207H421" stroke="url(#neon)" stroke-width="2"/><circle class="pulse" cx="421" cy="207" r="4" fill="#50e9ec"/>'
+ svg('card-'+name,448,232,title,body)
+svg('signal-divider',960,44,'Ruflo signal divider','<path d="M20 22H390L410 10H550L570 22H940" fill="none" stroke="#294359"/><path class="flow" d="M20 22H390L410 10H550L570 22H940" fill="none" stroke="url(#neon)"/><text x="480" y="31" text-anchor="middle" fill="#80a9bf" font-size="10" letter-spacing="3">RUFLO</text>')
