@@ -49,6 +49,23 @@ const RISKY_EVENTS: Record<string, string> = {
   'agent.spawn': 'can rewrite or answer every agent spawn',
 }
 
+/**
+ * The risky events a registered pattern reaches. The scan reports patterns as
+ * written, so a glob (`tool.*`) or a negation (`!tool.describe`: every event
+ * but one) must be judged by what it selects, not by how it is spelled.
+ */
+const escapeRe = (text: string) => text.replace(/[.+?^$()|[\]{}\\]/g, '\\$&')
+
+function riskyEventsOf(pattern: string): string[] {
+  if (Object.hasOwn(RISKY_EVENTS, pattern)) return [pattern]
+  if (pattern.startsWith('!')) return ['*']
+  // A settings hook by name, or a glob of them, can answer any of them.
+  if (pattern.startsWith('classic.')) return ['classic.*']
+  if (!pattern.includes('*')) return []
+  const glob = new RegExp(`^${pattern.split('*').map(escapeRe).join('.*')}$`)
+  return Object.keys(RISKY_EVENTS).filter(name => name !== '*' && name !== 'classic.*' && glob.test(name))
+}
+
 const isStrings = (v: unknown): v is readonly string[] => Array.isArray(v) && v.every(s => typeof s === 'string')
 
 /** What a module's scan says it could do that matters, as readable reasons. */
@@ -56,8 +73,8 @@ export function riskOf(scan: ModuleScan): string[] {
   const calls = isStrings(scan.uses?.calls) ? scan.uses.calls : []
   const events = isStrings(scan.uses?.events) ? scan.uses.events : []
   return [
-    ...calls.filter(c => c in RISKY_CALLS).map(c => `${c} (${RISKY_CALLS[c]})`),
-    ...events.filter(ev => ev in RISKY_EVENTS).map(ev => `on ${ev} (${RISKY_EVENTS[ev]})`),
+    ...calls.filter(c => Object.hasOwn(RISKY_CALLS, c)).map(c => `${c} (${RISKY_CALLS[c]})`),
+    ...events.flatMap(ev => riskyEventsOf(ev).map(name => `on ${ev === name ? ev : `${ev} → ${name}`} (${RISKY_EVENTS[name]})`)),
   ]
 }
 
