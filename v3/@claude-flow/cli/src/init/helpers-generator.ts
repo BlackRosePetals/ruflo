@@ -444,6 +444,7 @@ module.exports = commands;
 // Literal-word root guard mirrored in the mod and both shipped classic helpers.
 const ROOT_DELETE_CHECK_SOURCE = String.raw`function hasRootDelete(command, depth = 0) {
   let word = '', quote = '', started = false, redirect = false
+  let ansiNul = false // a NUL inside $'...' ends that string, as in bash
   let inRm = false, optionsEnded = false, recursive = false, force = false, root = false
   const isRoot = (operand) => {
     if (!operand.startsWith('/')) return false
@@ -454,6 +455,23 @@ const ROOT_DELETE_CHECK_SOURCE = String.raw`function hasRootDelete(command, dept
       else parts.push(part)
     }
     return parts.length === 0 || /[*?\[]/.test(parts[0])
+  }
+  // One backslash escape inside $'...', from the character after the backslash.
+  // Returns the text it stands for and the index of its last character. An unknown escape keeps its backslash.
+  // The command arrives lowercased, so an uppercase-U escape reads as a lowercase one: eight digits starting 0000 are one code point.
+  const ansiEscape = (s, at) => {
+    const c = s[at]
+    const simple = { a: '\x07', b: '\b', e: '\x1b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v', '\\': '\\', "'": "'", '"': '"', '?': '?' }
+    if (simple[c] !== undefined) return [simple[c], at]
+    const digits = (from, max, pattern) => pattern.exec(s.slice(from, from + max))?.[0]
+    const octal = digits(at, 3, /^[0-7]+/)
+    if (octal) return [String.fromCharCode(parseInt(octal, 8) & 255), at + octal.length - 1]
+    const hex = c === 'x' ? digits(at + 1, 2, /^[0-9a-f]+/) : undefined
+    if (hex) return [String.fromCharCode(parseInt(hex, 16)), at + hex.length]
+    const wide = c === 'u' ? (digits(at + 1, 8, /^0000[0-9a-f]{4}$/) ?? digits(at + 1, 4, /^[0-9a-f]+/)) : undefined
+    if (wide) return [String.fromCodePoint(parseInt(wide, 16)), at + wide.length]
+    if (c === 'c' && at + 1 < s.length) return [String.fromCharCode(s.charCodeAt(at + 1) & 31), at + 1]
+    return ['\\' + c, at]
   }
   const finishWord = () => {
     if (!started) return false
@@ -497,6 +515,15 @@ const ROOT_DELETE_CHECK_SOURCE = String.raw`function hasRootDelete(command, dept
     const redirectionAmpersand = char === '&' && (redirect || command[i + 1] === '>')
     redirect = false
     if (quote) {
+      if (quote === "$'") {
+        if (char === "'") { quote = ''; ansiNul = false }
+        else if (char === '\\' && i + 1 < command.length) {
+          const [text, last] = ansiEscape(command, i + 1)
+          i = last
+          if (!ansiNul) { const nul = text.indexOf('\0'); if (nul < 0) word += text; else { word += text.slice(0, nul); ansiNul = true } }
+        } else if (!ansiNul) word += char
+        continue
+      }
       if (char === quote) quote = ''
       else if (quote === '"' && char === '\x60' && command.indexOf('\x60', i + 1) > i) {
         const [end, denied] = substitution(i + 1, true)
@@ -526,7 +553,8 @@ const ROOT_DELETE_CHECK_SOURCE = String.raw`function hasRootDelete(command, dept
       if (denied) return true
       i = end; started = true
     } else if (char === '$' && (command[i + 1] === "'" || command[i + 1] === '"')) {
-      // ANSI-C ($'...') and locale ($"...") quoting: the $ is not part of the word.
+      // ANSI-C ($'...': escapes decoded) and locale ($"...") quoting: the $ is not part of the word.
+      quote = command[i + 1] === "'" ? "$'" : '"'; started = true; i++
     } else if (char === '"' || char === "'") {
       quote = char; started = true
     } else if (char === '#' && !started) {
