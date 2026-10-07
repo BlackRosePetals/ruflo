@@ -12,6 +12,7 @@ import { labLines } from './mh-lab'
 import { outputLines } from './ops'
 import { filterPalette, paletteEntries, textOfQuery, type PaletteEntry } from './palette'
 import { CLI_PREFIXES, type State } from './state'
+import { prettyLines } from './result-lines'
 
 export const PENDING_TTL_MS = 30_000
 
@@ -75,7 +76,7 @@ export function createRunner(state: State, host: Host, deps: RunnerDeps): Runner
 
       // A lab run's output goes to the lab's result panel, scrolled from its top; the footer keeps the one-line outcome.
       if (spec.lab !== undefined) {
-        panel.result = { id: spec.lab, label: spec.label, ok, exitCode: result.exitCode, ...(spec.note !== undefined && { note: spec.note }), lines: spec.read?.(result.stdout, result.stderr, ok) ?? (spec.lines ?? ((out, err) => labLines(spec.lab ?? '', out, err)))(result.stdout, result.stderr), atMs: Date.now() }
+        panel.result = { id: spec.lab, label: spec.label, ok, exitCode: result.exitCode, ...(spec.note !== undefined && { note: spec.note }), lines: prettyLines(spec.read?.(result.stdout, result.stderr, ok) ?? (spec.lines ?? ((out, err) => labLines(spec.lab ?? '', out, err)))(result.stdout, result.stderr)), atMs: Date.now() }
         state.select.item = 0
       }
       // Keyed on the exit, not on `ok`: relay text in a read may carry an "error" key of its own.
@@ -126,8 +127,20 @@ export function createRunner(state: State, host: Host, deps: RunnerDeps): Runner
       return
     }
 
-    if (spec.isReadOnly === true) {
+    // Claude's call is held to the gate, whatever the entry says about itself: a "read-only" entry that declares it spends, writes or reaches the
+    // network is queued for the level, budget and confirm checks (callTool), not run (#3815). The person's own click is unchanged.
+    const byModel = spec.byModel === true || state.control.viaModel
+    const isActingForModel = byModel && spec.isReadOnly === true && spec.declared !== undefined
+
+    if (spec.isReadOnly === true && !isActingForModel) {
       inflight = execute(spec)
+
+      return
+    }
+
+    // Claude's ask never replaces what the person has waiting: their Yes would run Claude's action instead of the one they read (ADR-450 T17).
+    if (byModel && state.pending !== null) {
+      say('not queued', false, `an action is already waiting for the person ("${plain(state.pending.label, 80)}"): Claude's request was dropped`)
 
       return
     }
@@ -136,14 +149,14 @@ export function createRunner(state: State, host: Host, deps: RunnerDeps): Runner
     // Claude asked for (ADR-444) still goes through the pending path, where the control level and the confirm mode decide.
     const kind = rememberKey(spec)
 
-    if (kind !== null && state.allowed.has(kind) && !state.control.viaModel) {
+    if (kind !== null && state.allowed.has(kind) && !byModel) {
       inflight = execute({ ...spec, label: `${spec.label} (remembered: not asked)` })
 
       return
     }
 
     pendingSpec = spec
-    state.pending = { view: state.view, ...(kind !== null && { rememberKey: kind }), ...(spec.scope !== undefined && { scope: spec.scope }), label: spec.label, args: spec.args, expect: spec.expect, askedAtMs: Date.now(), source: state.control.viaModel ? 'claude' : 'you', ...(spec.shows !== undefined && { shows: spec.shows }), ...(spec.note !== undefined && { note: spec.note }) }
+    state.pending = { view: state.view, ...(kind !== null && { rememberKey: kind }), ...(spec.scope !== undefined && { scope: spec.scope }), label: spec.label, args: spec.args, expect: spec.expect, askedAtMs: Date.now(), source: byModel ? 'claude' : 'you', ...(spec.shows !== undefined && { shows: spec.shows }), ...(spec.note !== undefined && { note: spec.note }), ...(spec.declared !== undefined && { declared: spec.declared }) }
     host.invalidate()
   }
 

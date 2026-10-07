@@ -11,7 +11,7 @@ import { settingsOf } from '../hooks/settings'
 import { newState, type State } from '../hooks/state'
 import type { Actions } from '../hooks/views/common'
 import { viewText } from '../hooks/views/pane'
-import { setup } from './fixtures/control-setup'
+import type { Level } from './fixtures/control-setup'
 
 /** A controller whose runner behaves like the real one: read-only entries finish at once, the rest wait in `state.pending`. */
 function setup(level: Level, confirm: 'ask' | 'auto' = 'ask', entries: Record<string, { label: string; readOnly?: boolean; note?: string }> = {}, followUp?: { label: string; note?: string }) {
@@ -383,7 +383,7 @@ describe('the dashboard', () => {
   const show = (state: State) => viewText({ state, nowMs: Date.now(), columns: 100, act: { control: { pause: () => undefined } } as unknown as Actions }, 'overview')
 
   it('says control is off and where to turn it on', () => {
-    const text = show(newState({}))
+    const text = show(setup('off').state)
 
     expect(text).toContain('Claude control')
     expect(text).toContain('Settings → Claude control')
@@ -409,7 +409,7 @@ describe('the dashboard', () => {
     await callTool('console_state', {}, deps)
 
     const on = show(state).toLowerCase()
-    const off = show(newState({})).toLowerCase()
+    const off = show(setup('off').state).toLowerCase()
 
     expect(on.indexOf('claude control')).toBeGreaterThanOrEqual(0)
     expect(on.indexOf('claude control')).toBeLessThan(on.indexOf('optimizer'))

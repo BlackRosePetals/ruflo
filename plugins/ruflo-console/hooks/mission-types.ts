@@ -4,7 +4,7 @@ import type { Screen } from './mission-options'
 import type { Plan, Profile, Rigor } from './goap'
 import type { LoopActions } from './views/mission-loop'
 
-export type LedgerTask = { id: string; title: string; phase: string; stage?: string; agent: string; requirement: string; dependsOn: string[]; rufloTaskId?: string; dispatchedAtMs?: number }
+export type LedgerTask = { id: string; title: string; phase: string; stage?: string; agent: string; requirement: string; dependsOn: string[]; rufloTaskId?: string; dispatchedAtMs?: number; /** How many times it was handed to Claude (counted per attempt, failed hand-outs included): auto-run stops at MAX_HANDOUTS. */ handouts?: number }
 export type LedgerEvent = { seq: number; atMs: number; type: string; taskId?: string; status?: string; evidenceRef?: string; note?: string }
 export type MissionRecord = {
   id: string
@@ -42,7 +42,7 @@ export type McState = {
   /** AIDefence's verdict on the goal (null: not screened yet or the screen is off), and whether the screen is on. */
   screen: Screen | null
   isScreenOn: boolean
-  last: { label: string; ok: boolean; detail: string } | null
+  last: { label: string; ok: boolean; detail: string; atMs?: number; next?: string } | null
 }
 
 export type MissionActions = {
@@ -64,7 +64,7 @@ export type MissionActions = {
   /** Runs a ruflo-goals skill in the main Claude UI on the goal (or the active mission's objective). */
   skill: (id: string) => void
   /** Guide Claude: a visible instruction to the primary session (asks first: it starts a model turn). */
-  guide: (text: string) => void
+  guide: (text: string) => void | Promise<void>
   /** Asks claude -p for guidance on the current goal again (asks first unless always accept). */
   askGuidance: () => void
   /** Runs another ruflo plugin's slash command (ruOS, AIDefence, SPARC, ...) on the goal in the main Claude UI. */

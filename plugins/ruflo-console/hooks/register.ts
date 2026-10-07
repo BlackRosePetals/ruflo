@@ -1,4 +1,5 @@
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
+import { tolerantPress } from './press-guard'
 import { ANSWER_KEYS } from './views/attention'
 
 import { createController, type Controller } from './controller'
@@ -10,11 +11,12 @@ import type { Host } from './host'
 import { ownerLine, ownerOf } from './tool-owner'
 import { newState, PANE_ID, restore, restoreSessions, storeKeyOf, termStoreKeyOf } from './state'
 import { BAR_KEY, barView } from './views/bar'
+import { addNotice, dismissNotices } from './notices'
 import { setBootChecks } from './boot-checks'
 import { buildOf, isOurCheckout, setBuild } from './build'
 import { runUpdateCheck } from './update-flow'
-import { announceModelTools, confirmOf, levelOf, lowerOnly, parseControlEnv, serveModelTools } from './model-tools'
-import { loadAiPrefs, settingsOf } from './settings'
+import { announceModelTools, parseControlEnv, serveModelTools } from './model-tools'
+import { loadAiPrefs, setControlCap } from './settings'
 import { contextSection, onPromptSubmit, onTurnComplete } from './mission-claude'
 import { parseMode, RECHECK_EVERY_MS, UPDATES_KEY } from './updates'
 import { selfCheckResults } from './self-check'
@@ -111,6 +113,17 @@ function hostOf($: EngineInterface, cwd: string): Host {
         $.clock.after(1, () => void $.command.run({ command, args }).then(resolve, reject))
       }),
     listCommands: async () => (await $.command.list()).map(command => command.name),
+    // ADR-465. A tool call waits on the turn like submitPrompt, so it starts from a clock tick, never inside the hook that asked.
+    toolCall: input =>
+      new Promise((resolve, reject) => {
+        $.clock.after(1, () => void $.tool.call(input as never).then(reply => resolve(reply as never), reject))
+      }),
+    toolCheck: async (tool, input) => $.tool.check({ tool, input }),
+    httpSend: async (url, init) => {
+      const response = await $.http.fetch(url, init)
+
+      return { ok: response.ok, status: response.status, text: response.text }
+    },
   }
 }
 
@@ -212,10 +225,8 @@ export const register: Register = (on, raw: PluginOptions) => {
     const forced = parseControlEnv(await (async () => $.env.get('RUFLO_CONSOLE_CONTROL'))().catch(() => undefined))
 
     // The override may only lower what the person saved (ADR-450 T12): a project's settings env must not raise Claude's control.
-    const ai = settingsOf(state).ai
-    const effective = lowerOnly({ level: levelOf(ai.modelControl), confirm: confirmOf(ai.modelConfirm) }, forced)
-
-    Object.assign(ai, { modelControl: effective.level, modelConfirm: effective.confirm })
+    // It is kept as session state and applied on every load and save of the preferences, so opening Settings cannot lift it (#3814).
+    setControlCap(state, forced === null ? null : { level: forced.level, confirm: forced.confirm })
     await announceModelTools(tool => $.tool.register(tool), state).catch(() => 0)
 
     return next(e)
@@ -249,7 +260,8 @@ export const register: Register = (on, raw: PluginOptions) => {
   on('ui.press', { component: 'Pane' }, ($, e, next) => {
     if (!ANSWER_KEYS.has(e.element)) state.lastPressed = e.element
 
-    return next(e)
+    // A click that reaches the engine after its drawing was replaced (a resize) finds no handler: answered quietly (press-guard.ts).
+    return tolerantPress(() => next(e), { element: e.element })
   })
 
   on('ui.input', { component: 'Pane' }, ($, e, next) => {
@@ -306,7 +318,8 @@ export const register: Register = (on, raw: PluginOptions) => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, ($, e, next) => {
-    const show = state.options.bar === 'on' || (state.options.bar === 'auto' && state.snapshot?.isRufloProject === true)
+    const mode = state.bandMode ?? state.options.bar
+    const show = mode === 'on' || (mode === 'auto' && state.snapshot?.isRufloProject === true)
 
     if (control === null || e.props.hasSurvey || !show) {
       return next(e)
@@ -326,6 +339,13 @@ export const register: Register = (on, raw: PluginOptions) => {
     return barView(table, state, Math.floor(Number(e.props.bodyColumns) || 80), mark, () => void bound.open(false), view => {
       bound.setView(view)
       void bound.open(true)
+    }, () => {
+      dismissNotices(state)
+      try {
+        $.ui.invalidate('ui.render')
+      } catch {
+        // A refused redraw leaves the notice showing until the next one.
+      }
     })
   })
 
@@ -345,6 +365,7 @@ export const register: Register = (on, raw: PluginOptions) => {
   on('turn.start', ($, e, next) => {
     // A new turn: the per-turn cap on Claude's console actions starts over.
     state.control.turnCalls = 0
+    if (e.agentId === undefined) state.turnStartedMs = Date.now()
 
     try {
       $.ui.invalidate('ui.render')
@@ -356,6 +377,13 @@ export const register: Register = (on, raw: PluginOptions) => {
   })
 
   on('turn.complete', ($, e, next) => {
+    if (e.agentId === undefined && state.turnStartedMs !== null) {
+      // A long turn that ends while nobody watches is worth saying: the band announces it (a short one is not news).
+      const took = Date.now() - state.turnStartedMs
+
+      if (took >= 30_000) addNotice(state, { level: 'ok', text: `✓ Claude finished a turn · ${took < 60_000 ? `${Math.round(took / 1000)}s` : `${Math.floor(took / 60_000)}m ${Math.round((took % 60_000) / 1000)}s`}`, key: 'turn-done' })
+    }
+    if (e.agentId === undefined) state.turnStartedMs = null
     if (e.agentId === undefined) control?.markFrame('', false)
     if (e.agentId === undefined && host !== null) {
       try {

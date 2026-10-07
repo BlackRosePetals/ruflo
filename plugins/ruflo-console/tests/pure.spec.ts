@@ -59,7 +59,7 @@ describe('readers', () => {
   })
 
   it('plain strips control and bidi characters; idOf admits only id-shaped strings', () => {
-    expect(plain('a\u001b[31m‮b\u0000c')).toBe('a b c')
+    expect(plain('a\u001b[31m‮b\u0000c')).toBe('ab c')
     expect(plain('x'.repeat(50), 10)).toHaveLength(10)
     expect(idOf('agent-1790903032181-97m25s')).toBe('agent-1790903032181-97m25s')
     for (const bad of ['bad id!', '-rf', '', 'a'.repeat(200), '../etc', 42]) expect(idOf(bad)).toBeNull()
@@ -115,6 +115,11 @@ describe('CLI JSON', () => {
     expect(jsonAfter('Transformers.js loaded: x\n{\n "a": 1\n}\n')).toEqual({ a: 1 })
     expect(jsonAfter('[INFO] Executing tool\nResult:\n{\n "b": [1]\n}')).toEqual({ b: [1] })
     expect(jsonAfter('no json here')).toBeNull()
+    // a trailing log line with a stray bracket is not part of the JSON (#3789)
+    expect(jsonAfter('{"available":true,"totalDecisions":5}\n[info] see https://x/guide]')).toEqual({ available: true, totalDecisions: 5 })
+    expect(jsonAfter('{"backend":"sqlite","entries":{"total":10}}\nDone (lexical-degraded}')).toEqual({ backend: 'sqlite', entries: { total: 10 } })
+    expect(jsonAfter('{"s":"a } and ] in a string","n":1}\ntrailing ]')).toEqual({ s: 'a } and ] in a string', n: 1 })
+    expect(jsonAfter('{"cut":')).toBeNull()
   })
 
   it('no probe reaches the network but the opt-in roster and registry; plugins list and verify are never run', () => {

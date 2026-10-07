@@ -4,7 +4,22 @@ import type { GuidanceHooks } from './guidance'
 import { versionText } from './probe'
 import { HANDSHAKE_MARKER, ownedEvents } from './ownership'
 import type { ModOptions } from './options'
+import { MAX_BYTES, PROTECTOR_STATUS, protectorLine } from './protector'
 import { redraw, report, under, type ModState } from './state'
+
+/** `/ruflo-mods` plus the protector row when `.claude-flow/protector-mod/status.json` is present and readable (bounded, regular file only). */
+async function reportWithProtector($: EngineInterface, s: ModState): Promise<string> {
+  const base = report(s)
+  try {
+    const path = under(s, PROTECTOR_STATUS)
+    const st = await $.fs.stat(path)
+    if (st.kind !== 'file' || st.size > MAX_BYTES) return base
+    const row = protectorLine(await $.fs.read(path))
+    return row ? `${base}\n${row}` : base
+  } catch {
+    return base
+  }
+}
 
 const HELPER = '.claude/helpers/hook-handler.cjs'
 
@@ -24,7 +39,9 @@ export const HEARTBEAT_PATH = '.claude-flow/mods/session.json'
 async function helperHonours($: EngineInterface): Promise<boolean> {
   const root = await $.session.root().catch(() => undefined)
   const home = await $.env.get('HOME').catch(() => undefined)
-  for (const base of new Set([root, home])) {
+  // The generated Windows command falls back to %USERPROFILE%\.claude\helpers when the project has no copy.
+  const profile = await $.env.get('USERPROFILE').catch(() => undefined)
+  for (const base of new Set([root, home, profile])) {
     if (!base) continue
     const path = `${base}/${HELPER}`
     if (!(await $.fs.exists(path).catch(() => true))) continue
@@ -82,13 +99,13 @@ export function registerSession(on: On, state: ModState, options: ModOptions, gu
     return next(e)
   })
 
-  on('command.run', { command: 'ruflo-mods' }, () => ({ text: report(state) }))
+  on('command.run', { command: 'ruflo-mods' }, async $ => ({ text: await reportWithProtector($, state) }))
 
   // `/ruflo` is ruflo-console's one command for every ruflo mod; its `mods` subcommand is this report. The console
   // registers `/ruflo`; this hook answers `mods` wherever it sits in the chain and passes every other word on.
   // `/ruflo-mods` above stays registered as its alias: ADR-406 removes, renames or reassigns no command.
   // `/ruflo-console` is the same command as `/ruflo` (kept by ADR-406), so its `mods` is answered too.
   for (const command of ['ruflo', 'ruflo-console'] as const) {
-    on('command.run', { command }, ($, e, next) => (e.args.trim().split(/\s+/)[0]?.toLowerCase() === 'mods' ? { text: report(state) } : next(e)))
+    on('command.run', { command }, async ($, e, next) => (e.args.trim().split(/\s+/)[0]?.toLowerCase() === 'mods' ? { text: await reportWithProtector($, state) } : next(e)))
   }
 }

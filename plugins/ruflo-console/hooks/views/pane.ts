@@ -31,7 +31,9 @@ import { sandboxView } from './sandbox'
 import { federationView } from './federation'
 import { hiveView } from './hive'
 import { learningView } from './learning'
-import { approvalsView, eventsView, timelineView } from './manage'
+import { eventsView } from './events'
+import { approvalsView } from './manage'
+import { timelineView } from './timeline'
 import { roomView } from './room'
 import { memoryView } from './memory'
 import { menuView } from './menu'
@@ -48,6 +50,7 @@ import { pluginsView } from './plugins'
 import { secureResult, secureView } from './secure'
 import { skillsView } from './skills'
 import { swarmView } from './swarm'
+import { workflowsPage } from './wf-page'
 import { terminalView } from './terminal'
 import { vectorResult, vectorView } from './vector'
 import { xruvView } from './xruv'
@@ -66,6 +69,7 @@ const BODIES: Record<ViewId, (ctx: Ctx) => RenderElement> = {
   menu: menuView,
   overview: overviewView,
   swarm: swarmView,
+  workflows: workflowsPage,
   hive: hiveView,
   claims: claimsView,
   federation: federationView,

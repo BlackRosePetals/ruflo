@@ -8,6 +8,8 @@ import type { OptimizerActions } from '../optimizer'
 import { askedBy } from '../data/room'
 import type { RoomActions } from '../room'
 import type { WatchActions } from '../watch'
+import type { EventsActions } from '../events-ui'
+import type { TimelineActions } from '../timeline-ui'
 import type { Attention } from './attention'
 import { HEADS, mark as marked } from './marks'
 import type { LoopActions } from '../loops'
@@ -32,6 +34,7 @@ import type { UpdatesMode } from '../updates'
 import { chip, COST_CHIP } from '../menu-colors'
 import { accentOfView } from '../nav-state'
 import type { VectorActions } from '../vector'
+import type { WorkflowsActions } from '../wf-actions'
 
 export type Kit = Pick<Elements['terminal'], 'Box' | 'Text' | 'Button'> & { Raster?: Elements['terminal']['Raster']; Input?: Elements['terminal']['Input'] }
 
@@ -90,6 +93,10 @@ export type Actions = {
   optimizer: OptimizerActions
   /** The Timeline and Events pages: look-back range, kind filter, search, pause, paging, an event's detail, and asking about one. */
   watch: WatchActions
+  /** The Events page (ADR-474): query, level, window, follow, mutes, pins, saved searches, alert rules, export. */
+  events: EventsActions
+  /** The Timeline page (ADR-474): window, zoom, pan, lane groups, sort, lane detail, cross-links, export. */
+  timeline: TimelineActions
   /** The Room (ADR-448): the draft, what to send through, the feed's source filter, search, pause and paging. */
   room: RoomActions
   /** Ask Claude about this section (a visible prompt or a /btw aside) or run the plugin command that fits it: each asks first. */
@@ -120,6 +127,8 @@ export type Actions = {
   checkUpdates: () => void
   /** Opens or closes a collapsible section (`<view>/<id>`). */
   toggle: (key: string) => void
+  /** The Workflows page: cursor keys, the inspector's tab, the confirm-gated ruflo agent verbs, and naming a transcript's path. */
+  workflows: WorkflowsActions
   /** Settings: the level, a plugin, an option or ruflo config change (each asks first), AI preferences, and ▸ ask claude/codex. */
   settings: SettingsActions
 }
@@ -202,14 +211,16 @@ export function ago(atMs: number | null | undefined, nowMs: number): string {
 
 /** A count as people read it (12.3k), or n/a for a value nobody measured. */
 export function count(value: number | null | undefined): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) return 'n/a'
+  // A count is whole and not negative; a hostile 1e300 is "1T+", never a display value (#3817).
+  if (value === null || value === undefined || !Number.isFinite(value) || value < 0) return 'n/a'
+  if (value >= 1e12) return '1T+'
   if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
   if (Math.abs(value) >= 10_000) return `${(value / 1000).toFixed(1)}k`
 
   return String(Math.round(value * 100) / 100)
 }
 
-export const pct = (value: number | null | undefined): string => (value === null || value === undefined || !Number.isFinite(value) ? 'n/a' : `${Math.round(value * 100)}%`)
+export const pct = (value: number | null | undefined): string => (value === null || value === undefined || !Number.isFinite(value) ? 'n/a' : `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`)
 
 export function text(ctx: Ctx, children: string, props: { color?: string; bold?: boolean; dimColor?: boolean; italic?: boolean } = {}): RenderElement {
   return ctx.kit.Text({ wrap: 'truncate-end', ...props, children: clip(children, Math.max(4, ctx.columns)) })
@@ -261,18 +272,22 @@ export function section(ctx: Ctx, id: string, title: string, right: string, chil
 export function rule(ctx: Ctx, title: string, right = ''): RenderElement {
   if (look === 'bbs') {
     // BBS section header: ▓▒░ SWARM ░▒▓══════════ right
-    const head = `▓▒░ ${title.toUpperCase()} ░▒▓`
-    const fill = Math.max(1, ctx.columns - head.length - right.length - 2)
+    const head = `▓▒░ ${clip(title, Math.max(4, ctx.columns - 12)).toUpperCase()} ░▒▓`
+    const room = Math.max(0, ctx.columns - head.length - 3)
+    const tail = clip(right, room)
+    const fill = Math.max(1, ctx.columns - head.length - tail.length - 2)
 
-    const line = row(ctx, [ctx.kit.Text({ bold: true, color: accentOf(ctx), children: head }), ctx.kit.Text({ color: accentOf(ctx), dimColor: true, children: `${'═'.repeat(fill)} ` }), ctx.kit.Text({ color: accentOf(ctx), children: right })])
+    const line = row(ctx, [ctx.kit.Text({ bold: true, color: accentOf(ctx), wrap: 'truncate-end', children: head }), ctx.kit.Text({ color: accentOf(ctx), dimColor: true, children: `${'═'.repeat(fill)} ` }), ctx.kit.Text({ color: accentOf(ctx), wrap: 'truncate-end', children: tail })])
 
     // In a card the header is the card's first row; otherwise a blank line above each section, so the board breathes instead of packing every block together.
     return ctx.cards === true ? marked(HEADS, line) : marked(HEADS, col(ctx, [ctx.kit.Text({ children: ' ' }), line]))
   }
 
-  const fill = Math.max(1, ctx.columns - title.length - right.length - 3)
+  const name = clip(title, Math.max(4, ctx.columns - 4))
+  const tail = clip(right, Math.max(0, ctx.columns - name.length - 4))
+  const fill = Math.max(1, ctx.columns - name.length - tail.length - 3)
 
-  return marked(HEADS, row(ctx, [ctx.kit.Text({ bold: true, color: THEME.head, children: title }), ctx.kit.Text({ dimColor: true, children: ` ${'─'.repeat(fill)} ` }), ctx.kit.Text({ dimColor: true, children: right })]))
+  return marked(HEADS, row(ctx, [ctx.kit.Text({ bold: true, color: THEME.head, wrap: 'truncate-end', children: name }), ctx.kit.Text({ dimColor: true, children: ` ${'─'.repeat(fill)} ` }), ctx.kit.Text({ dimColor: true, wrap: 'truncate-end', children: tail })]))
 }
 
 /** A label and its value; the value dims when it is n/a. */
@@ -368,25 +383,38 @@ export function confirmRow(ctx: Ctx): RenderElement | null {
     )
   }
 
-  return col(
-    ctx,
-    [
-      text(ctx, '▶ CONFIRM NEEDED — click Yes or press y', { bold: true, color: THEME.warn }),
-      text(ctx, `Confirm: ${askedBy(pending)}${pending.label.replace(/\?+$/, '')}?`, { bold: true, color: THEME.warn }),
+  // One bordered card in the warning colour: the person says yes to everything in it, so it reads as a unit, not as loose lines. Its border and
+  // padding take four columns, so the text inside is clipped to the narrower width.
+  const inner: Ctx = { ...ctx, columns: Math.max(20, ctx.columns - 4) }
+  const hasMoney = pending.note !== undefined && /money|models/i.test(pending.note)
+
+  return ctx.kit.Box({
+    key: 'confirm',
+    flexDirection: 'column',
+    borderStyle: 'round',
+    borderColor: THEME.warn,
+    paddingX: 1,
+    children: [
+      row(ctx, [ctx.kit.Text({ bold: true, color: THEME.warn, children: '▶ CONFIRM NEEDED' }), ctx.kit.Text({ dimColor: true, children: '  click Yes or press y' })]),
+      text(inner, '─'.repeat(inner.columns), { dimColor: true }),
+      text(inner, `Confirm: ${askedBy(pending)}${pending.label.replace(/\?+$/, '')}?`, { bold: true, color: THEME.warn }),
       // Wrapped, not clipped: the person says yes to the whole argv, so all of it shows (a JSON argument runs long).
       ctx.kit.Text({ dimColor: true, wrap: 'wrap', children: `runs: ${pending.shows ?? `ruflo ${pending.args.join(' ')}`}` }),
-      ...(pending.note !== undefined ? [text(ctx, pending.note, { bold: /money|models/i.test(pending.note), color: /money|models/i.test(pending.note) ? THEME.bad : THEME.warn })] : []),
-      row(ctx, [
-        button(ctx, 'confirm', 'Yes, run it (y)', ctx.act.confirm, { hotkey: 'y', primary: true }),
-        button(ctx, 'cancel', 'Cancel (n)', ctx.act.cancel, { hotkey: 'n' }),
-        // A low-risk ruflo action may be remembered: it is not asked again (Settings lists and forgets it).
-        ...(pending.rememberKey !== undefined ? [button(ctx, 'remember', `Always allow “${pending.rememberKey}”`, () => ctx.act.remember())] : []),
-        // An AI terminal turn (claude -p in plan mode, codex read-only, the budget cap) may be always accepted: Settings resets it.
-        ...(ctx.state.terminal.asked !== null && pending.label === ctx.state.terminal.asked.label && ctx.state.terminal.harness !== 'ruflo' ? [button(ctx, 'always', 'Always accept AI turns', () => ctx.act.settings.alwaysAccept())] : []),
-      ]),
+      ...(pending.note !== undefined ? [ctx.kit.Text({ wrap: 'wrap', bold: hasMoney, color: hasMoney ? THEME.bad : THEME.warn, children: `Effect: ${pending.note}` })] : []),
+      ctx.kit.Box({
+        flexDirection: 'row',
+        marginTop: 1,
+        children: [
+          button(ctx, 'confirm', 'Yes, run it (y)', ctx.act.confirm, { hotkey: 'y', primary: true }),
+          button(ctx, 'cancel', 'Cancel (n)', ctx.act.cancel, { hotkey: 'n' }),
+          // A low-risk ruflo action may be remembered: it is not asked again (Settings lists and forgets it).
+          ...(pending.rememberKey !== undefined ? [button(ctx, 'remember', `Always allow “${pending.rememberKey}”`, () => ctx.act.remember())] : []),
+          // An AI terminal turn (claude -p in plan mode, codex read-only, the budget cap) may be always accepted: Settings resets it.
+          ...(ctx.state.terminal.asked !== null && pending.label === ctx.state.terminal.asked.label && ctx.state.terminal.harness !== 'ruflo' ? [button(ctx, 'always', 'Always accept AI turns', () => ctx.act.settings.alwaysAccept())] : []),
+        ],
+      }),
     ],
-    'confirm',
-  )
+  })
 }
 
 /** Views that draw the confirm themselves, under the field it came from (the pane then does not draw it above the body). */

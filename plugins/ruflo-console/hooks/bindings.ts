@@ -12,11 +12,17 @@ import { navActions } from './nav-state'
 import { roomActions } from './room'
 import { roomPages } from './views/room'
 import { watchActions } from './watch'
+import { wireActivity } from './activity-live'
+import { eventsActions } from './events-ui'
+import { timelineActions } from './timeline-ui'
+import { workflowsActions } from './wf-actions'
 import { missionActions } from './mission-control'
 import { catalogActions } from './plugin-catalog'
 import { saveAllowed } from './remember'
 import { pluginNames, settingsActions } from './settings'
 import { catalogOf } from './plugin-catalog'
+import { wireAnatole } from './anatole'
+import { wireWorkflows } from './wf-wire'
 import { devtoolsActions } from './devtools'
 import { HARNESSES, harnessSpec, isAutoAccept, isLive, newSession, send, whyNotRun } from './harness'
 import { helpActions } from './help-actions'
@@ -62,7 +68,13 @@ export function actionsOf(state: State, host: Host, runner: Runner, steps: Steps
   /** j/k: what moves depends on the view in front. */
   function select(by: number): void {
     const view = state.view
-    const key = view === 'claims' ? 'claim' : view === 'swarm' || view === 'timeline' || view === 'agent' ? 'agent' : 'item'
+
+    // The Workflows page keeps its own cursor (run, phase, agent): /ruflo next and prev move it as j and k do.
+    if (view === 'workflows') return actions.workflows.key(by > 0 ? 'j' : 'k')
+    if (view === 'events') return actions.events.move(by)
+    if (view === 'timeline') return actions.timeline.move(by)
+
+    const key = view === 'claims' ? 'claim' : view === 'swarm' || view === 'agent' ? 'agent' : 'item'
 
     state.select[key] += by
 
@@ -73,6 +85,9 @@ export function actionsOf(state: State, host: Host, runner: Runner, steps: Steps
     host.invalidate()
   }
 
+  wireAnatole(state, host)
+  wireWorkflows(state, host)
+  wireActivity(state, host)
   const actions: Actions = {
     view: setView,
     remember: () => {
@@ -369,6 +384,8 @@ export function actionsOf(state: State, host: Host, runner: Runner, steps: Steps
     loops: loopActions(state, host, runner),
     optimizer: optimizerActions(state, () => host.invalidate(), id => void runner.runById(id, ''), question => actions.ask.ask(question, 'overview')),
     watch: watchActions(state, () => host.invalidate(), (question, view) => actions.ask.ask(question, view)),
+    events: eventsActions(state, host, () => host.invalidate(), (spec, why = 'that cannot run here') => runner.ask(spec, why), question => actions.ask.ask(question, 'events')),
+    timeline: timelineActions(state, host, () => host.invalidate(), id => setView(id), (spec, why = 'that cannot run here') => runner.ask(spec, why), question => actions.ask.ask(question, 'timeline')),
     room: roomActions(state, () => host.invalidate(), (id, text) => runner.runById(id, text), () => roomPages(state)),
     navigator: navActions(state, () => host.invalidate(), view => actions.view(view)),
     catalog: catalogActions(state, host, runner, text => actions.term.load('claude', text)),
@@ -378,6 +395,7 @@ export function actionsOf(state: State, host: Host, runner: Runner, steps: Steps
         host.invalidate()
       },
     },
+    workflows: workflowsActions(state, host, runner),
     devtools: devtoolsActions(state, host, runner.runById, why => runner.ask(null, why)),
   }
 
