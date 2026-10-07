@@ -10,7 +10,7 @@
 [![Star on GitHub](https://img.shields.io/github/stars/ruvnet/claude-flow?style=for-the-badge&logo=github&color=gold)](https://github.com/ruvnet/claude-flow)
 
 <!-- Animated ecosystem badges; downloads use data/npm-downloads.latest.json; clone value preserves its earlier snapshot. -->
-<a href="https://github.com/ruvnet/ruvector"><img src="docs/assets/readme/ruvector-promo-explorer-card.svg" width="100%" alt="RuVector: Give your agents memory. Local vector search, persistent context, graph relationships and feedback learning. Explore RuVector."></a>
+<a href="https://github.com/ruvnet/ruvector"><img src="docs/assets/readme/ruvector-promo-depth.svg" width="100%" alt="RuVector: Give your agents memory. Local vector search, persistent context, graph relationships and feedback learning. Explore RuVector."></a>
 
 
 [![Ecosystem npm downloads: 12.52M over 12 months through October 4, 2026](docs/assets/readme/badges/downloads.svg)](data/npm-downloads.latest.json)
