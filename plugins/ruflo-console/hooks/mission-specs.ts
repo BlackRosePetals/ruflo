@@ -139,7 +139,8 @@ const inflight = new WeakSet<LedgerTask>()
 
 export const isInflight = (task: LedgerTask): boolean => inflight.has(task)
 
-export function dispatchSpec(state: State, host: Host, mission: MissionRecord, task: LedgerTask, send: (text: string) => Promise<void>): ActionSpec {
+/** `isReady` replaces the one-at-a-time check for a caller that has its own bound (autopilot's `startable`); without it the mission's own `nextTask` rule applies. */
+export function dispatchSpec(state: State, host: Host, mission: MissionRecord, task: LedgerTask, send: (text: string) => Promise<void>, isReady?: (mission: MissionRecord, tasks: readonly TaskRecord[], task: LedgerTask) => boolean): ActionSpec {
   const text = instructionOf(mission, task)
 
   return {
@@ -151,7 +152,7 @@ export function dispatchSpec(state: State, host: Host, mission: MissionRecord, t
     note: 'Starts a Claude Code turn on your plan (billed as any turn is); the prompt is visible and Claude records the result with task_complete.',
     run: async () => {
       // The ask stays open for a while: the mission may have moved (paused, cancelled, auto-run took it, a double press).
-      if (mission.paused || mission.cancelled || inflight.has(task) || nextTask(mission, state.snapshot?.tasks ?? [])?.id !== task.id) {
+      if (mission.paused || mission.cancelled || inflight.has(task) || !(isReady === undefined ? nextTask(mission, state.snapshot?.tasks ?? [])?.id === task.id : isReady(mission, state.snapshot?.tasks ?? [], task))) {
         mcOf(state).last = { label: `task ${task.id} not handed over`, ok: false, detail: 'the mission changed since you asked (paused, cancelled, or that task already went)' }
         host.invalidate()
 
