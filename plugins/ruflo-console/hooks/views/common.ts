@@ -8,6 +8,8 @@ import type { OptimizerActions } from '../optimizer'
 import { askedBy } from '../data/room'
 import type { RoomActions } from '../room'
 import type { WatchActions } from '../watch'
+import type { EventsActions } from '../events-ui'
+import type { TimelineActions } from '../timeline-ui'
 import type { Attention } from './attention'
 import { HEADS, mark as marked } from './marks'
 import type { LoopActions } from '../loops'
@@ -91,6 +93,10 @@ export type Actions = {
   optimizer: OptimizerActions
   /** The Timeline and Events pages: look-back range, kind filter, search, pause, paging, an event's detail, and asking about one. */
   watch: WatchActions
+  /** The Events page (ADR-474): query, level, window, follow, mutes, pins, saved searches, alert rules, export. */
+  events: EventsActions
+  /** The Timeline page (ADR-474): window, zoom, pan, lane groups, sort, lane detail, cross-links, export. */
+  timeline: TimelineActions
   /** The Room (ADR-448): the draft, what to send through, the feed's source filter, search, pause and paging. */
   room: RoomActions
   /** Ask Claude about this section (a visible prompt or a /btw aside) or run the plugin command that fits it: each asks first. */
@@ -205,14 +211,16 @@ export function ago(atMs: number | null | undefined, nowMs: number): string {
 
 /** A count as people read it (12.3k), or n/a for a value nobody measured. */
 export function count(value: number | null | undefined): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) return 'n/a'
+  // A count is whole and not negative; a hostile 1e300 is "1T+", never a display value (#3817).
+  if (value === null || value === undefined || !Number.isFinite(value) || value < 0) return 'n/a'
+  if (value >= 1e12) return '1T+'
   if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
   if (Math.abs(value) >= 10_000) return `${(value / 1000).toFixed(1)}k`
 
   return String(Math.round(value * 100) / 100)
 }
 
-export const pct = (value: number | null | undefined): string => (value === null || value === undefined || !Number.isFinite(value) ? 'n/a' : `${Math.round(value * 100)}%`)
+export const pct = (value: number | null | undefined): string => (value === null || value === undefined || !Number.isFinite(value) ? 'n/a' : `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`)
 
 export function text(ctx: Ctx, children: string, props: { color?: string; bold?: boolean; dimColor?: boolean; italic?: boolean } = {}): RenderElement {
   return ctx.kit.Text({ wrap: 'truncate-end', ...props, children: clip(children, Math.max(4, ctx.columns)) })

@@ -9,17 +9,34 @@
  * content there.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+
+// Hermetic: the formatter must never shell out (live `gh api user`, `ps`, `git`) in
+// these formatting-only tests; every dynamic value comes through the public
+// registerDataSources seam. #3844
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('child_process')>();
+  return { ...actual, execSync: vi.fn(() => '') };
+});
+
+// Imported at collection time so the cold import is not charged to the first timed case.
+import { execSync } from 'child_process';
 import { StatuslineGenerator } from '../../src/statusline/index.js';
 
-function formattingGenerator(): StatuslineGenerator {
+function createGenerator(): StatuslineGenerator {
   const generator = new StatuslineGenerator();
   generator.registerDataSources({
-    getUserInfo: () => ({ name: 'fixture-user', gitBranch: 'main', modelName: 'fixture-model' }),
-    getSystemMetrics: () => ({ memoryMB: 128, contextPct: 12, intelligencePct: 34, subAgents: 2 }),
+    getUserInfo: () => ({ name: 'test-user', gitBranch: 'main', modelName: 'test-model' }),
+    getSystemMetrics: () => ({ memoryMB: 100, contextPct: 10, intelligencePct: 50, subAgents: 0 }),
+    getSwarmActivity: () => ({ activeAgents: 0, maxAgents: 15, coordinationActive: false }),
   });
   return generator;
 }
+
+afterEach(() => {
+  expect(execSync).not.toHaveBeenCalled();
+  vi.mocked(execSync).mockClear();
+});
 
 /**
  * Strip ANSI escape codes from a string
@@ -88,7 +105,7 @@ function isCollisionZoneClear(line: string): boolean {
 
 describe('Statusline Collision Zone Avoidance', () => {
   it('should have clear collision zone in safe multi-line output', () => {
-    const generator = formattingGenerator();
+    const generator = createGenerator();
     const output = generator.generateSafeStatusline();
 
     if (!output) {
@@ -107,7 +124,7 @@ describe('Statusline Collision Zone Avoidance', () => {
   });
 
   it('should produce single-line output when requested', () => {
-    const generator = formattingGenerator();
+    const generator = createGenerator();
     const output = generator.generateSingleLine();
 
     if (!output) {
@@ -119,7 +136,7 @@ describe('Statusline Collision Zone Avoidance', () => {
   });
 
   it('should have padding in the collision line', () => {
-    const generator = formattingGenerator();
+    const generator = createGenerator();
     const output = generator.generateSafeStatusline();
 
     if (!output) {
@@ -148,7 +165,7 @@ describe('Statusline Collision Zone Avoidance', () => {
 
 describe('Statusline Output Modes', () => {
   it('should support all output modes', () => {
-    const generator = formattingGenerator();
+    const generator = createGenerator();
 
     // Regular statusline
     const regular = generator.generateStatusline();

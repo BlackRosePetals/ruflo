@@ -280,7 +280,7 @@ export const lifecycleOrder = (rows: readonly NeuralPattern[]): NeuralPattern[] 
 /** The ids `neural_compress prune` with this threshold would remove: usageCount below it (neural-tools.ts). */
 export const wouldPrune = (rows: readonly NeuralPattern[], threshold: number): string[] => rows.filter(row => row.usageCount < threshold).map(row => row.id)
 
-export type ReadStatus = 'ok' | 'missing' | 'too-large' | 'refused'
+export type ReadStatus = 'ok' | 'missing' | 'too-large' | 'refused' | 'not-regular'
 
 export type RecallFacts = {
   ranked: Ranked | null
