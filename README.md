@@ -6,12 +6,18 @@
 
 ## Start here
 
-**Try a plugin in Claude Code** for core tools without generating the full project scaffold. Run inside Claude Code:
+<img src="docs/assets/readme/icons/plugins.svg" width="28" height="28" alt=""> **Start in Claude Code** with core tools, the visual console and runtime mods. Requires Claude Code **2.1.287 or later**. Run inside Claude Code:
 
 ```text
 /plugin marketplace add ruvnet/ruflo
 /plugin install ruflo-core@ruflo
+/plugin install ruflo-console@ruflo
+/plugin install ruflo-mods@ruflo
+/reload-plugins
+/ruflo
 ```
+
+**Core** provides foundation tools. **Console** opens the agent cockpit. **Mods** add routing and policy enforcement inside Claude Code. Mods run with your account's permissions; review their code before installing.
 
 **Install the full CLI** for project setup, agents, memory, MCP and hooks. Run in your project terminal, then follow the wizard:
 
