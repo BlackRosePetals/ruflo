@@ -9,9 +9,9 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Star on GitHub](https://img.shields.io/github/stars/ruvnet/claude-flow?style=for-the-badge&logo=github&color=gold)](https://github.com/ruvnet/claude-flow)
 
-<!-- Animated ecosystem badges; download and clone values preserve the existing README snapshot. -->
+<!-- Animated ecosystem badges; downloads use data/npm-downloads.latest.json; clone value preserves its earlier snapshot. -->
 [![🕸️ RuVector Agentic DB](docs/assets/readme/badges/ruvector.svg)](https://github.com/ruvnet/ruvector)
-[![Ecosystem downloads](docs/assets/readme/badges/downloads.svg)](https://github.com/ruvnet/ruflo/blob/main/data/clone-data.proof.json)
+[![Ecosystem npm downloads: 12.52M over 12 months through October 4, 2026](docs/assets/readme/badges/downloads.svg)](data/npm-downloads.latest.json)
 [![Git clones (14d)](docs/assets/readme/badges/clones.svg)](https://github.com/ruvnet/ruflo/blob/main/data/clone-data.ledger.json)
 [![Claude Code](docs/assets/readme/badges/claude.svg)](https://github.com/ruvnet/claude-flow)
 [![Codex Plugin](docs/assets/readme/badges/codex.svg)](https://www.npmjs.com/package/@claude-flow/codex)
