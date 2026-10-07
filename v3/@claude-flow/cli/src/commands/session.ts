@@ -9,6 +9,7 @@ import { confirm, input, select } from '../prompt.js';
 import { callMCPTool, MCPClientError } from '../mcp-client.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import { stringify as stringifyYaml } from 'yaml';
 import { gzipSync, gunzipSync } from 'node:zlib';
 
 // Format date for display
@@ -679,7 +680,7 @@ const exportCommand: Command = {
       // Format output
       let content: string;
       if (exportFormat === 'yaml') {
-        content = toSimpleYaml(result.data);
+        content = stringifyYaml(result.data);
       } else {
         content = JSON.stringify(result.data, null, 2);
       }
@@ -946,37 +947,6 @@ function formatDuration(ms: number): string {
     return `${minutes}m ${seconds % 60}s`;
   }
   return `${seconds}s`;
-}
-
-function toSimpleYaml(obj: unknown, indent: number = 0): string {
-  // Simple YAML serializer (for basic types)
-  if (obj === null) return 'null';
-  if (typeof obj === 'boolean') return String(obj);
-  if (typeof obj === 'number') return String(obj);
-  if (typeof obj === 'string') return obj.includes(':') ? `"${obj}"` : obj;
-
-  const spaces = '  '.repeat(indent);
-  let result = '';
-
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      result += `${spaces}- ${toSimpleYaml(item, indent + 1).trim()}\n`;
-    }
-    return result;
-  }
-
-  if (typeof obj === 'object') {
-    for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === 'object' && value !== null) {
-        result += `${spaces}${key}:\n${toSimpleYaml(value, indent + 1)}`;
-      } else {
-        result += `${spaces}${key}: ${toSimpleYaml(value, indent)}\n`;
-      }
-    }
-    return result;
-  }
-
-  return String(obj);
 }
 
 // Main session command
