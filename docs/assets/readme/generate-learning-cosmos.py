@@ -1,6 +1,6 @@
 """Deterministic conceptual trajectory animation. Run with Python 3."""
 from pathlib import Path
-from math import sin,cos,pi
+from math import sin,cos,pi,tanh,sqrt
 import random,xml.etree.ElementTree as ET
 from html import escape
 R=random.Random(71); P=Path(__file__).parent
@@ -24,42 +24,88 @@ def path(ids):
   x,y=points[a];xx,yy=points[b];s+=f' Q{x:.1f} {(y+yy)/2:.1f} {xx:.1f} {yy:.1f}'
  return s
 base_points=points[:]
-views=[]; view_paths=[]
-view_names=['FRONTAL CANOPY','ISOMETRIC MEMORY','POLAR EMBEDDINGS','SIDE PROFILE','LOCAL VECTOR SPHERE','TRAJECTORY TUNNEL','ORBITAL FEEDBACK']
+view_paths=[]
+view_names=['BRANCHING TRAJECTORIES','HYPERBOLIC POINCARE DISK','CONTRASTIVE CLUSTERS','GRADIENT VECTOR FIELD','NEAREST NEIGHBOR GRAPH','HELICAL MEMORY MANIFOLD','TOROIDAL FEEDBACK']
+def linepath(ids,pts):
+ return 'M'+'L'.join(f'{pts[i][0]:.1f} {pts[i][1]:.1f}' for i in ids)
+def projected(x,y,z):
+ yy=y*.78-z*.55;zz=y*.55+z*.78;scale=800/(800+zz)
+ return 480+x*scale,450+yy*scale
+def geo(a,b):
+ p=complex((a[0]-480)/242,(a[1]-450)/242);q=complex((b[0]-480)/242,(b[1]-450)/242)
+ w=(q-p)/(1-p.conjugate()*q);out=[]
+ for j in range(13):
+  v=w*j/12;z=(p+v)/(1+p.conjugate()*v);out.append((480+242*z.real,450+242*z.imag))
+ return 'M'+'L'.join(f'{x:.1f} {y:.1f}' for x,y in out)
 for camera in range(7):
- points=[]
- for i,(bx,by) in enumerate(base_points):
-  u=(bx-480)/432; v=(694-by)/497
-  depth=next(d for d,ids in enumerate(levels) if i in ids)
-  lo,hi=angles[i]; theta=(lo+hi)/2; r=depth/6
-  if camera==0: x,y=bx,by
-  elif camera==1:
-   x=480+u*340+v*130; y=650-v*370+u*105
-  elif camera==2:
-   angle=theta*2; x=480+350*r*cos(angle); y=455+240*r*sin(angle)
-  elif camera==3:
-   x=130+v*680; y=452+u*210*(.4+.6*v)
-  elif camera==4:
-   angle=theta*2; latitude=(r-.5)*pi
-   xx=cos(latitude)*cos(angle); yy=sin(latitude); zz=cos(latitude)*sin(angle)
-   scale=1/(1+.22*zz); x=480+340*xx*scale; y=453+222*yy*scale
-  elif camera==5:
-   angle=theta*2+depth*.35; radius=40+195*r
-   x=480+radius*1.65*cos(angle); y=450+radius*sin(angle)
-  else:
-   angle=theta*2; ring=125+75*r
-   x=480+ring*1.7*cos(angle); y=453+ring*.72*sin(angle)+(r-.5)*210
-  points.append((x,y))
- views.append(points[:]); O.append(f'<g id="forest{camera}">')
- for i,(x,y) in enumerate(points[1:],1):
-  par=parents[i];O.append(f'<path d="{path([par,i])}" fill="none" stroke="#b8d9f1" stroke-width="{.65 if i>120 else 1}" opacity="{.2 if i>120 else .4}"/>')
- for i,(x,y) in enumerate(points):O.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{max(.8,3.5-i/160):.1f}" fill="{"#ffae78" if i%31==0 else "#e0f2ff"}" opacity="{.55+R.random()*.45:.2f}"/>')
- O.append('</g>'); paths=[]
- for leaf in [800,660,990,450,875,550,1070]:
-  ids=[leaf]
-  while parents[ids[-1]]>=0:ids.append(parents[ids[-1]])
-  ids.reverse();paths.append(path(ids))
- view_paths.append(paths)
+ pts=[];edges=[];routes=[];extra='';hues=[]
+ if camera==0:
+  pts=base_points;edges=[(parents[i],i) for i in range(1,len(pts))]
+  for leaf in [800,990]:
+   ids=[leaf]
+   while parents[ids[-1]]>=0:ids.append(parents[ids[-1]])
+   routes.append(linepath(ids[::-1],pts))
+ elif camera==1:
+  pts=[(480,450)];intervals=[(0,2*pi)];last=[0]
+  for depth in range(1,6):
+   nxt=[]
+   for par in last:
+    lo,hi=intervals[par]
+    for j in range(3):
+     angle=lo+(j+.5)*(hi-lo)/3;rr=tanh(depth*.37)*242
+     idx=len(pts);pts.append((480+rr*cos(angle),450+rr*sin(angle)));intervals.append((lo+j*(hi-lo)/3,lo+(j+1)*(hi-lo)/3));edges.append((par,idx));nxt.append(idx)
+   last=nxt
+  for leaf in [200,290]:
+   ids=[leaf]
+   while ids[-1]>0:ids.append((ids[-1]-1)//3)
+   ids.reverse();routes.append(''.join(geo(pts[a],pts[b]).replace('M','L',1) if n else geo(pts[a],pts[b]) for n,(a,b) in enumerate(zip(ids,ids[1:]))))
+  extra='<circle cx="480" cy="450" r="244" stroke="#7bd9ff" stroke-width="1.5" fill="none"/><circle cx="480" cy="450" r="250" stroke="#38566e" stroke-dasharray="2 8" fill="none"/>'
+ elif camera==2:
+  for c,(cx,cy) in enumerate([(285,330),(665,330),(480,606)]):
+   for j in range(70):
+    angle=j*2.399;rr=11*sqrt(j);pts.append((cx+rr*cos(angle),cy+.7*rr*sin(angle)));hues.append(['#55efc1','#ff9869','#a591ff'][c])
+   for j in range(c*70+1,(c+1)*70):edges.append((j,c*70+(j-c*70)//2))
+  routes=[linepath([20,8,3,0,140,143,153],pts),linepath([100,84,75,70,140,145,160],pts)]
+ elif camera==3:
+  for row in range(13):
+   for col in range(23):
+    x=120+col*32;y=242+row*32;pts.append((x,y));angle=.007*(x-480)+.006*(y-450)
+    dx=19*cos(angle);dy=19*sin(angle)
+    extra+=f'<path d="M{x} {y}l{dx:.1f} {dy:.1f}m{-dx*.3+dy*.2:.1f} {-dy*.3-dx*.2:.1f}l{dx*.3-dy*.2:.1f} {dy*.3+dx*.2:.1f}l{-dx*.3-dy*.2:.1f} {-dy*.3+dx*.2:.1f}" fill="none" stroke="#7bcbe8" opacity=".65"/>'
+  routes=['M125 600C230 600 210 350 400 330S690 580 830 350','M130 290C310 220 365 615 550 565S650 330 830 240']
+ elif camera==4:
+  for j in range(150):
+   angle=j*2.399;rr=24*sqrt(j);pts.append((480+rr*cos(angle)*1.25,450+rr*sin(angle)*.72))
+  for i,pnt in enumerate(pts):
+   ns=sorted(range(len(pts)),key=lambda j:(pts[j][0]-pnt[0])**2+(pts[j][1]-pnt[1])**2)[1:5]
+   edges.extend((i,j) for j in ns if j>i)
+  for start in [120,138]:
+   ids=[start]
+   while ids[-1]>8:
+    cur=ids[-1];candidates=[j for j in range(cur)];n=min(candidates,key=lambda j:(pts[j][0]-pts[cur][0])**2+(pts[j][1]-pts[cur][1])**2);ids.append(n)
+   routes.append(linepath(ids,pts))
+ elif camera==5:
+  for j in range(70):
+   a=j*.16
+   for strand in range(3):pts.append(projected(155*cos(a+strand*2*pi/3),(j-35)*6,155*sin(a+strand*2*pi/3)))
+  edges=[(j,j+3) for j in range(len(pts)-3)]+[(j,j+1) for j in range(0,len(pts)-2,3)]
+  routes=[linepath(list(range(strand,len(pts),3)),pts) for strand in [0,2]]
+ else:
+  for i in range(40):
+   a=2*pi*i/40
+   for j in range(10):
+    b=2*pi*j/10;rad=205+65*cos(b);pts.append(projected(rad*cos(a),65*sin(b),rad*sin(a)))
+  edges=[(i*10+j,((i+1)%40)*10+j) for i in range(40) for j in range(10)]+[(i*10+j,i*10+(j+1)%10) for i in range(40) for j in range(10)]
+  routes=[linepath([((i%40)*10+(i//4+offset)%10) for i in range(61)],pts) for offset in [0,5]]
+ O.append(f'<g id="forest{camera}">')
+ O.append(extra)
+ for a,b in edges:
+  d=geo(pts[a],pts[b]) if camera==1 else linepath([a,b],pts)
+  O.append(f'<path d="{d}" fill="none" stroke="#a9cce8" stroke-width=".8" opacity=".36"/>')
+ for i,(x,y) in enumerate(pts):
+  color=hues[i] if hues else ('#ffaf75' if i%29==0 else '#cceeff')
+  O.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{1 if camera in [0,3] else 2}" fill="{color}" opacity=".85"/>')
+ O.append('</g>');view_paths.append(routes)
 O.append('</defs>')
 css='text{font-family:Arial,Helvetica,sans-serif}.scene{opacity:0;animation:scene 49s linear infinite}.drift{transform-origin:480px 470px;animation:drift 14s ease-in-out infinite}.trace{stroke-dasharray:1200;stroke-dashoffset:1200;animation:trace 7s ease-in-out infinite}.pulse{transform-origin:480px 694px;animation:pulse 3s ease-out infinite}@keyframes pulse{0%{transform:scale(.5);opacity:.8}100%{transform:scale(2.5);opacity:0}}@keyframes drift{0%,100%{transform:perspective(900px) rotateY(-6deg) rotateZ(-1deg)}50%{transform:perspective(900px) rotateY(6deg) rotateZ(1deg)}}@keyframes trace{0%{stroke-dashoffset:1200}60%,90%{stroke-dashoffset:0}100%{stroke-dashoffset:-1200}}@keyframes scene{0%,13.1%{opacity:1}14.28%,100%{opacity:0}}'
 for k in range(7):css+=f'.s{k}{{animation-delay:-{49-k*7}s}}'
@@ -72,7 +118,7 @@ for k,(label,title,l1,l2) in enumerate(S):
  O.append(f'<g class="scene s{k}"><text x="44" y="96" fill="#ffab70" font-size="20" letter-spacing="3">{escape(label)}</text><text x="44" y="151" fill="#f5f8ff" font-size="44" font-weight="700" letter-spacing="-1">{escape(title)}</text><g class="drift">')
  O.append(f'<use xlink:href="#forest{k}"/>')
  paths=view_paths[k]
- for route in [k,(k+2)%7]:
+ for route in range(len(paths)):
   d=paths[route];O.append(f'<path class="trace" d="{d}" stroke="url(#route)" stroke-width="10" opacity=".75" fill="none" filter="url(#glow)"/><path class="trace" d="{d}" stroke="url(#route)" stroke-width="2.7" fill="none"/>')
   for delay in [0,1.5,3]:O.append(f'<circle class="motion" r="4" fill="#fff3df"><animateMotion dur="5s" begin="-{delay}s" repeatCount="indefinite" path="{d}"/></circle>')
  O.append('</g>')
@@ -84,4 +130,4 @@ for k,(label,title,l1,l2) in enumerate(S):
  O.append(f'<rect x="32" y="744" width="896" height="114" rx="16" fill="#09111c" stroke="#293c50"/><text x="480" y="788" text-anchor="middle" fill="#edf4fd" font-size="27">{escape(l1)}</text><text x="480" y="829" text-anchor="middle" fill="#a9bfd2" font-size="25">{escape(l2)}</text>')
  for j in range(7):O.append(f'<rect x="{347+j*39}" y="875" width="28" height="4" rx="2" fill="{"#ff9e64" if j==k else "#2b3e51"}"/>')
  O.append('</g>')
-O.append('</svg>');svg=''.join(O);ET.fromstring(svg);(P/'learning-vector-perspectives.svg').write_text(svg);print(len(points),'nodes;',len(svg),'bytes; XML valid')
+O.append('</svg>');svg=''.join(O);ET.fromstring(svg);(P/'learning-vector-geometries.svg').write_text(svg);print(len(points),'nodes;',len(svg),'bytes; XML valid')

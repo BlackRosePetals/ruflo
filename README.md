@@ -38,7 +38,7 @@ A 14-chapter guide: from the basic idea to a first useful task, then memory, age
 
 One `npx ruflo init` gives Claude Code a nervous system: agents self-organize into swarms, learn from every task, remember across sessions, and — with federation — securely talk to agents on other machines without leaking data. You keep writing code. Ruflo handles the coordination.
 
-<p align="center"><img src="docs/assets/readme/learning-vector-perspectives.svg" width="100%" alt="Ruflo trajectory learning: branching memory paths, outcome feedback, contrastive AI and local learning. No LLM required for local vector retrieval and contrastive updates; agent execution may still use an LLM."></p>
+<p align="center"><img src="docs/assets/readme/learning-vector-geometries.svg" width="100%" alt="Ruflo trajectory learning: branching memory paths, outcome feedback, contrastive AI and local learning. No LLM required for local vector retrieval and contrastive updates; agent execution may still use an LLM."></p>
 
 <sub>Conceptual learning loop. Local vector retrieval and contrastive updates can run without an LLM; embeddings and configured learning modules are still required. See the <a href="v3/@claude-flow/cli/src/services/ruvector-training.ts">RuVector training integration</a> and <a href="v3/@claude-flow/neural/src/modes/balanced.ts">trajectory contrastive learning</a>.</sub>
 
