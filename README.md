@@ -2,6 +2,8 @@
 
 <a href="https://cognitum.one/agentic-engineering"><img src="ruflo/assets/ruflo-neon-flicker.gif" alt="Ruflo animated neon sign" width="100%"></a>
 
+**An agent meta-harness for Claude Code and Codex.**
+
 <!-- Try Ruflo — the 3 badges first-time visitors actually act on -->
 [![npm version (ruflo)](https://img.shields.io/npm/v/ruflo?label=npx%20ruflo&style=for-the-badge&logo=npm&color=cb3837)](https://www.npmjs.com/package/ruflo)
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -78,7 +80,6 @@ npx ruvector
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-**An agent meta-harness for Claude Code and Codex.**
 
 [![RuFlo Explained — build an AI team that plans, remembers, tests, and improves](docs/assets/ruflo-explained/ch14.jpg)](docs/ruflo-explained.md)
 
