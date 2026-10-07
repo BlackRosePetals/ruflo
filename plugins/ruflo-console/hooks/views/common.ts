@@ -8,6 +8,8 @@ import type { OptimizerActions } from '../optimizer'
 import { askedBy } from '../data/room'
 import type { RoomActions } from '../room'
 import type { WatchActions } from '../watch'
+import type { EventsActions } from '../events-ui'
+import type { TimelineActions } from '../timeline-ui'
 import type { Attention } from './attention'
 import { HEADS, mark as marked } from './marks'
 import type { LoopActions } from '../loops'
@@ -91,6 +93,10 @@ export type Actions = {
   optimizer: OptimizerActions
   /** The Timeline and Events pages: look-back range, kind filter, search, pause, paging, an event's detail, and asking about one. */
   watch: WatchActions
+  /** The Events page (ADR-474): query, level, window, follow, mutes, pins, saved searches, alert rules, export. */
+  events: EventsActions
+  /** The Timeline page (ADR-474): window, zoom, pan, lane groups, sort, lane detail, cross-links, export. */
+  timeline: TimelineActions
   /** The Room (ADR-448): the draft, what to send through, the feed's source filter, search, pause and paging. */
   room: RoomActions
   /** Ask Claude about this section (a visible prompt or a /btw aside) or run the plugin command that fits it: each asks first. */
