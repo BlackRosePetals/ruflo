@@ -19,11 +19,19 @@
 
 **Core** provides foundation tools. **Console** opens the agent cockpit. **Mods** add routing and policy enforcement inside Claude Code. Mods run with your account's permissions; review their code before installing.
 
-**Install the full CLI** for project setup, agents, memory, MCP and hooks. Run in your project terminal, then follow the wizard:
+<img src="docs/assets/readme/icons/terminal.svg" width="28" height="28" alt=""> **Using Codex or another MCP enabled tool?** Use NPX for Ruflo project setup and connect your client to the Ruflo MCP server. Run the setup wizard in your project terminal:
 
 ```bash
 npx ruflo@latest init wizard
 ```
+
+For clients that support local stdio MCP servers, configure **command** `npx` and **arguments** `["-y", "ruflo@latest", "mcp", "start"]`. The equivalent server command is:
+
+```bash
+npx -y ruflo@latest mcp start
+```
+
+MCP exposes Ruflo tools to your client. The console and mods above are Claude Code integrations; hook support depends on the client.
 
 [Compare install paths](#quick-start) · [Open the console](#console-walkthrough) · [User guide](docs/USERGUIDE.md)
 
