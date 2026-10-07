@@ -17,7 +17,9 @@
 
 </div>
 
-## Start here
+<a id="start-here"></a>
+
+## <img src="docs/assets/readme/icons/terminal.svg" width="32" height="32" alt=""> Get started with Ruflo
 
 <img src="docs/assets/readme/icons/plugins.svg" width="28" height="28" alt=""> **Start in Claude Code** with core tools, the visual console and runtime mods. Requires Claude Code **2.1.287 or later**. Run inside Claude Code:
 
