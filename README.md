@@ -33,13 +33,14 @@ A 14-chapter guide: from the basic idea to a first useful task, then memory, age
 
 One `npx ruflo init` gives Claude Code a nervous system: agents self-organize into swarms, learn from every task, remember across sessions, and — with federation — securely talk to agents on other machines without leaking data. You keep writing code. Ruflo handles the coordination.
 
-```
-Self-Learning / Self-Optimizing Agent Architecture
+<p align="center"><img src="docs/assets/readme/architecture-flow.svg" width="100%" alt="User to Ruflo CLI/MCP, router, swarm, agents, memory and LLM providers, with memory feedback to routing."></p>
 
-User --> Ruflo (CLI/MCP) --> Router --> Swarm --> Agents --> Memory --> LLM Providers
-                          ^                           |
-                          +---- Learning Loop <-------+
-```
+<details>
+<summary>Architecture in text</summary>
+
+User → Ruflo (CLI/MCP) → Router → Swarm → Agents → Memory → LLM providers. Memory feeds useful experience back into routing. This is a conceptual flow, not a live execution trace.
+
+</details>
 
 > **New to Ruflo?** You don't need to learn 314 MCP tools or 26 CLI commands. After `init`, just use Claude Code normally — the hooks system automatically routes tasks, learns from successful patterns, and coordinates agents in the background.
 
@@ -246,23 +247,17 @@ claude mcp add claude-flow -- npx ruflo@latest mcp start
 | 🌐 **Agent Federation** | Cross-installation agent collaboration with zero-trust security |
 | 🔬 **[MetaHarness](docs/metaharness-user-guide.md)** | Audit your AI agent setup before you ship. Grade readiness (1-100), scan tool configs for security issues, snapshot the whole project to catch regressions over time, and find templates that match your repo. `ruflo eject` turns a ruflo project into a standalone agent toolkit with its own name. [Full guide](docs/metaharness-user-guide.md). |
 
+### Learning from experience
+
+<p align="center"><img src="docs/assets/readme/learning-flow.svg" width="100%" alt="Recall, execute, evaluate, store, adapt and reuse: an illustrative agent learning cycle."></p>
+
+Useful trajectories and task feedback can inform future work. Results depend on the configured memory, learning components and quality of feedback. [Learning plugin](plugins/ruflo-intelligence/README.md).
+
 ### Agent Federation — Slack for Agents
 
 <p align="center"><img src="docs/assets/readme/federation.svg" alt="Connected intelligence across machines" width="100%"></p>
 
-```
-Your Agent --> [ Remove secrets ] --> [ Sign message ] --> [ Encrypted channel ]
-                 Emails, SSNs,        Proves it came       No one reads it
-                 keys stripped         from you              in transit
-                                                                |
-                                                                v
-Their Agent <-- [ Block attacks ] <-- [ Check identity ] <------+
-                 Stops prompt          Rejects forgeries
-                 injection
-
-                          Audit trail on both sides.
-                  Trust builds over time. Bad behavior = instant downgrade.
-```
+<p align="center"><img src="docs/assets/readme/federation-flow.svg" width="100%" alt="Outbound agent, data filtering, signing and encryption, identity verification, input checks and receiving agent."></p>
 
 Slack gave teams channels. Federation gives agents the same thing — **shared workspaces across trust boundaries**, where agents on different machines, orgs, or cloud regions can discover each other, prove who they are, and collaborate on tasks.
 
