@@ -10,7 +10,8 @@
 [![Star on GitHub](https://img.shields.io/github/stars/ruvnet/claude-flow?style=for-the-badge&logo=github&color=gold)](https://github.com/ruvnet/claude-flow)
 
 <!-- Animated ecosystem badges; downloads use data/npm-downloads.latest.json; clone value preserves its earlier snapshot. -->
-[![🕸️ RuVector Agentic DB](docs/assets/readme/badges/ruvector.svg)](https://github.com/ruvnet/ruvector)
+<a href="https://github.com/ruvnet/ruvector"><img src="docs/assets/readme/ruvector-promo.svg" width="640" alt="RuVector: local vector search and persistent agent memory. Search, remember, learn. Explore the repository."></a>
+
 [![Ecosystem npm downloads: 12.52M over 12 months through October 4, 2026](docs/assets/readme/badges/downloads.svg)](data/npm-downloads.latest.json)
 [![Git clones (14d)](docs/assets/readme/badges/clones.svg)](https://github.com/ruvnet/ruflo/blob/main/data/clone-data.ledger.json)
 [![Claude Code](docs/assets/readme/badges/claude.svg)](https://github.com/ruvnet/claude-flow)
